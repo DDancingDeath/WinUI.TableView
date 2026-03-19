@@ -1,8 +1,5 @@
 {
   "profiles": {
-    "TableViewNuGetSample (Package)": {
-      "commandName": "MsixPackage"
-    },
     "TableViewNuGetSample (Unpackaged)": {
       "commandName": "Project"
     }

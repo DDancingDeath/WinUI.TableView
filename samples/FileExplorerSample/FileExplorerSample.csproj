@@ -42,4 +42,10 @@
             <SetTargetFramework>TargetFramework=net9.0-windows10.0.19041.0</SetTargetFramework>
         </ProjectReference>
     </ItemGroup>
+
+    <ItemGroup>
+      <Page Update="Styles\FileExplorerTheme.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+    </ItemGroup>
 </Project>

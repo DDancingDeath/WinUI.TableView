@@ -7,7 +7,7 @@ xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 xmlns:tableView="using:WinUI.TableView"
 mc:Ignorable="d"
-Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+Background="{ThemeResource FileExplorerBackgroundBrush}">
 
     <Page.Resources>
         <!-- Override cell backgrounds to be transparent (we'll use row-level styling instead) -->
@@ -23,61 +23,6 @@ Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
                           VerticalAlignment="Center" />
             </StackPanel>
         </DataTemplate>
-
-        <!-- Custom ListViewItem style with light blue row hover -->
-        <Style x:Key="FileExplorerListViewItemStyle" TargetType="ListViewItem">
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListViewItem">
-                        <Grid x:Name="ContentBorder"
-                              Background="{TemplateBinding Background}"
-                              BorderBrush="{TemplateBinding BorderBrush}"
-                              BorderThickness="{TemplateBinding BorderThickness}">
-                            <VisualStateManager.VisualStateGroups>
-                                <VisualStateGroup x:Name="CommonStates">
-                                    <VisualState x:Name="Normal" />
-                                    <VisualState x:Name="PointerOver">
-                                        <VisualState.Setters>
-                                            <Setter Target="ContentBorder.Background" Value="#E6F3FF" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                    <VisualState x:Name="Pressed">
-                                        <VisualState.Setters>
-                                            <Setter Target="ContentBorder.Background" Value="#CCE8FF" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                    <VisualState x:Name="Selected">
-                                        <VisualState.Setters>
-                                            <Setter Target="ContentBorder.Background" Value="#CCE8FF" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                    <VisualState x:Name="SelectedPointerOver">
-                                        <VisualState.Setters>
-                                            <Setter Target="ContentBorder.Background" Value="#B3DFFF" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                    <VisualState x:Name="SelectedPressed">
-                                        <VisualState.Setters>
-                                            <Setter Target="ContentBorder.Background" Value="#99D6FF" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                </VisualStateGroup>
-                            </VisualStateManager.VisualStateGroups>
-                            <ContentPresenter
-                                x:Name="ContentPresenter"
-                                Margin="{TemplateBinding Padding}"
-                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                Content="{TemplateBinding Content}"
-                                ContentTemplate="{TemplateBinding ContentTemplate}"
-                                ContentTransitions="{TemplateBinding ContentTransitions}" />
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </Page.Resources>
 
     <Grid>
@@ -97,8 +42,8 @@ Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <!-- Title Bar -->
         <Border Grid.Row="0" 
                 Grid.ColumnSpan="3"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                Background="{ThemeResource FileExplorerTitleBarBackgroundBrush}"
+                BorderBrush="{ThemeResource FileExplorerBorderBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="16,12">
             <Grid>
@@ -127,8 +72,8 @@ Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
               Grid.Column="0"
               Grid.ColumnSpan="3"
               Padding="16,8"
-              Background="{ThemeResource LayerFillColorDefaultBrush}"
-              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+              Background="{ThemeResource FileExplorerBackgroundBrush}"
+              BorderBrush="{ThemeResource FileExplorerBorderBrush}"
               BorderThickness="0,0,0,1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -187,8 +132,8 @@ Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <!-- Side Navigation Panel -->
         <Border Grid.Row="2"
                 Grid.Column="0"
-                Background="{ThemeResource LayerFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                Background="{ThemeResource FileExplorerSidebarBackgroundBrush}"
+                BorderBrush="{ThemeResource FileExplorerBorderBrush}"
                 BorderThickness="0,0,1,0"
                 Padding="8">
             <ScrollViewer>
@@ -211,10 +156,7 @@ Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
                             </DataTemplate>
                         </ListView.ItemTemplate>
                         <ListView.ItemContainerStyle>
-                            <Style TargetType="ListViewItem">
-                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                <Setter Property="Padding" Value="0" />
-                            </Style>
+                            <Style TargetType="ListViewItem" BasedOn="{StaticResource FileExplorerSidebarListViewItemStyle}" />
                         </ListView.ItemContainerStyle>
                     </ListView>
 
@@ -249,7 +191,7 @@ Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
                 PointerReleased="Splitter_PointerReleased" />
 
         <!-- Main Content Area with TableView -->
-        <Grid Grid.Row="2" Grid.Column="2" Padding="16">
+        <Grid Grid.Row="2" Grid.Column="2" Padding="16" Background="{ThemeResource FileExplorerBackgroundBrush}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
@@ -298,7 +240,7 @@ Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
                                 ShowExportOptions="True"
                                 CornerButtonMode="Options"
                                 ShowGroupHeaders="False"
-                                AlternateRowBackground="{ThemeResource LayerFillColorDefaultBrush}"
+                                Background="{ThemeResource FileExplorerBackgroundBrush}"
                                 GridLinesVisibility="None"
                                 ItemContainerStyle="{StaticResource FileExplorerListViewItemStyle}"
                                 DoubleTapped="FileTableView_DoubleTapped"
@@ -339,8 +281,8 @@ Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <!-- Status Bar -->
         <Border Grid.Row="3"
                 Grid.ColumnSpan="3"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                Background="{ThemeResource FileExplorerTitleBarBackgroundBrush}"
+                BorderBrush="{ThemeResource FileExplorerBorderBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="16,8">
             <Grid>

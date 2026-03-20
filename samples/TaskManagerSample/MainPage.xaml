@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Page
+    x:Class="TaskManagerSample.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:TaskManagerSample"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:tableView="using:WinUI.TableView"
+    mc:Ignorable="d"
+    RequestedTheme="Dark"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Page.Resources>
+        <!-- Name column: icon + process name -->
+        <DataTemplate x:Key="NameCellTemplate">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Image Source="{Binding IconPath}" Width="16" Height="16"
+                       Visibility="{Binding HasIcon}" />
+                <FontIcon Glyph="{Binding IconGlyph}" FontSize="14"
+                          Visibility="{Binding HasGlyph}" />
+                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- Status column: "Efficiency mode" badge or "Suspended" -->
+        <DataTemplate x:Key="StatusCellTemplate">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock Text="{Binding StatusText}" TextTrimming="CharacterEllipsis"
+                           Visibility="{Binding HasStatusText}" />
+                <FontIcon Glyph="&#xE945;" FontSize="12" Foreground="#2D7D2D"
+                           Visibility="{Binding IsEfficiencyMode}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- CPU cell: text with optional highlight background -->
+        <DataTemplate x:Key="CpuCellTemplate">
+            <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                <Border Background="{Binding CpuBackground}"
+                        CornerRadius="0" Margin="-12,-6" Padding="12,6">
+                    <TextBlock Text="{Binding CpuDisplay}"
+                               VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Memory cell with highlight -->
+        <DataTemplate x:Key="MemoryCellTemplate">
+            <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                <Border Background="{Binding MemoryBackground}"
+                        CornerRadius="0" Margin="-12,-6" Padding="12,6">
+                    <TextBlock Text="{Binding MemoryDisplay}"
+                               VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Disk cell with highlight -->
+        <DataTemplate x:Key="DiskCellTemplate">
+            <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                <Border Background="{Binding DiskBackground}"
+                        CornerRadius="0" Margin="-12,-6" Padding="12,6">
+                    <TextBlock Text="{Binding DiskDisplay}"
+                               VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Network cell with highlight -->
+        <DataTemplate x:Key="NetworkCellTemplate">
+            <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                <Border Background="{Binding NetworkBackground}"
+                        CornerRadius="0" Margin="-12,-6" Padding="12,6">
+                    <TextBlock Text="{Binding NetworkDisplay}"
+                               VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Title bar area -->
+        <Grid Padding="16,10" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="Processes" FontSize="18" FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+
+            <AutoSuggestBox Grid.Column="1"
+                            PlaceholderText="Type a name, publisher, or PID to search"
+                            QueryIcon="Find"
+                            Width="380"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                <ToggleSwitch x:Name="ThemeToggle" Header="Dark" OnContent="" OffContent=""
+                              IsOn="True" Toggled="OnThemeToggled"
+                              VerticalAlignment="Center" MinWidth="0" />
+                <Button Content="Run new task" />
+                <Button Content="End task" Click="OnEndTaskClick" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Summary bar: CPU / Memory / Disk / Network totals -->
+        <Grid Grid.Row="1" Padding="16,0,16,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="24">
+                <StackPanel HorizontalAlignment="Center" Spacing="2">
+                    <TextBlock x:Name="CpuSummary" Text="0%" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="CPU" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+                <StackPanel HorizontalAlignment="Center" Spacing="2">
+                    <TextBlock x:Name="MemorySummary" Text="0%" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="Memory" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+                <StackPanel HorizontalAlignment="Center" Spacing="2">
+                    <TextBlock x:Name="DiskSummary" Text="0%" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="Disk" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+                <StackPanel HorizontalAlignment="Center" Spacing="2">
+                    <TextBlock x:Name="NetworkSummary" Text="0%" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="Network" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- Main TableView -->
+        <tableView:TableView
+            x:Name="ProcessTable"
+            Grid.Row="2"
+            AutoGenerateColumns="False"
+            ChildrenPath="Children"
+            GroupByPath="Category"
+            ShowGroupHeaders="True"
+            ShowGroupItemCount="True"
+            IsHierarchicalEnabled="True"
+            IsExpandedPath="IsExpanded"
+            HeadersVisibility="Columns"
+            ItemsSource="{x:Bind Processes}"
+            FrozenColumnCount="1"
+            RowHeight="32"
+            RowMinHeight="28"
+            SelectionMode="Single"
+            SelectionUnit="Row"
+            GridLinesVisibility="Horizontal"
+            HeaderGridLinesVisibility="All">
+            <tableView:TableView.Columns>
+                <tableView:TableViewTemplateColumn Header="Name"
+                    CellTemplate="{StaticResource NameCellTemplate}"
+                    MinWidth="320" Width="400"
+                    CanSort="True" SortMemberPath="Name" />
+                <tableView:TableViewTemplateColumn Header="Status"
+                    CellTemplate="{StaticResource StatusCellTemplate}"
+                    MinWidth="100" Width="130"
+                    CanSort="True" SortMemberPath="StatusText" />
+                <tableView:TableViewTemplateColumn Header="CPU"
+                    CellTemplate="{StaticResource CpuCellTemplate}"
+                    MinWidth="70" Width="90"
+                    CanSort="True" SortMemberPath="CpuPercent" />
+                <tableView:TableViewTemplateColumn Header="Memory"
+                    CellTemplate="{StaticResource MemoryCellTemplate}"
+                    MinWidth="90" Width="120"
+                    CanSort="True" SortMemberPath="MemoryMB" />
+                <tableView:TableViewTemplateColumn Header="Disk"
+                    CellTemplate="{StaticResource DiskCellTemplate}"
+                    MinWidth="80" Width="100"
+                    CanSort="True" SortMemberPath="DiskMBps" />
+                <tableView:TableViewTemplateColumn Header="Network"
+                    CellTemplate="{StaticResource NetworkCellTemplate}"
+                    MinWidth="80" Width="100"
+                    CanSort="True" SortMemberPath="NetworkMbps" />
+            </tableView:TableView.Columns>
+        </tableView:TableView>
+
+        <!-- Status bar -->
+        <Grid Grid.Row="3" Padding="16,6" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+            <TextBlock x:Name="StatusBar" FontSize="12"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Grid>
+    </Grid>
+</Page>

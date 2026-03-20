@@ -6,6 +6,8 @@ using Microsoft.UI.Xaml.Input;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
@@ -15,6 +17,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
+using Windows.Foundation.Collections;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.System;
@@ -30,10 +33,19 @@ namespace WinUI.TableView;
 [StyleTypedProperty(Property = nameof(CellStyle), StyleTargetType = typeof(TableViewCell))]
 public partial class TableView : ListView
 {
+    private sealed class GroupHeaderRowItem
+    {
+        public required object GroupKey { get; init; }
+
+        public required string Header { get; init; }
+    }
+
+    private static readonly object NullGroupKey = new();
     private TableViewHeaderRow? _headerRow;
     private ScrollViewer? _scrollViewer;
     private RowDefinition? _headerRowDefinition;
     private bool _shouldThrowSelectionModeChangedException;
+    private bool _isUpdatingBaseItemsSource;
     private bool _ensureColumns = true;
     private readonly List<TableViewRow> _rows = [];
     private readonly CollectionView _collectionView = [];
@@ -43,6 +55,17 @@ public partial class TableView : ListView
     internal bool _isDragging;
     private TableViewCellSlot? _lastDragSelectionSlot;
     private bool _cellSelectionDirty;
+    private readonly ObservableCollection<object> _displayItems = [];
+    private readonly Dictionary<object, int> _hierarchyLevelsByItem = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<object, string> _groupHeadersByItem = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<object, object> _groupKeysByItem = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<object, object> _groupHeaderItemsByKey = [];
+    private readonly HashSet<object> _collapsedHierarchyItems = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<object> _collapsedGroupKeys = [];
+    private readonly Dictionary<(Type Type, string Path), Func<object, object?>?> _propertyPathAccessorCache = [];
+    private SortDescription? _groupSortDescription;
+    private bool _isUpdatingGroupingSortDescription;
+    private bool _isDisplayedItemsRebuildQueued;
 
     /// <summary>
     /// Initializes a new instance of the TableView class.
@@ -54,7 +77,9 @@ public partial class TableView : ListView
         Columns = new TableViewColumnsCollection(this);
         FilterHandler = new ColumnFilterHandler(this);
 
-        base.ItemsSource = _collectionView;
+        _isUpdatingBaseItemsSource = true;
+        base.ItemsSource = _displayItems;
+        _isUpdatingBaseItemsSource = false;
         base.SelectionMode = SelectionMode;
 
         SetValue(ConditionalCellStylesProperty, new TableViewConditionalCellStylesCollection());
@@ -65,6 +90,68 @@ public partial class TableView : ListView
         Unloaded += OnUnloaded;
         SelectionChanged += TableView_SelectionChanged;
         _collectionView.ItemPropertyChanged += OnItemPropertyChanged;
+        _collectionView.VectorChanged += OnCollectionViewVectorChanged;
+
+        if (SortDescriptions is INotifyCollectionChanged sortDescriptions)
+        {
+            sortDescriptions.CollectionChanged += OnSortDescriptionsCollectionChanged;
+        }
+    }
+
+    private void OnCollectionViewVectorChanged(IObservableVector<object> sender, IVectorChangedEventArgs args)
+    {
+        QueueDisplayedItemsRebuild();
+    }
+
+    private bool _isEnsureGroupingSortQueued;
+
+    private void OnSortDescriptionsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        // Defer to avoid ObservableCollection reentrancy:
+        // modifying SortDescriptions inside its own CollectionChanged
+        // handler throws InvalidOperationException when >1 subscriber.
+        if (_isEnsureGroupingSortQueued || _isUpdatingGroupingSortDescription)
+        {
+            return;
+        }
+
+        _isEnsureGroupingSortQueued = true;
+
+        if (DispatcherQueue is null)
+        {
+            _isEnsureGroupingSortQueued = false;
+            EnsureGroupingSortDescription();
+            return;
+        }
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _isEnsureGroupingSortQueued = false;
+            EnsureGroupingSortDescription();
+        });
+    }
+
+    private void QueueDisplayedItemsRebuild()
+    {
+        if (_isDisplayedItemsRebuildQueued)
+        {
+            return;
+        }
+
+        _isDisplayedItemsRebuildQueued = true;
+
+        if (DispatcherQueue is null)
+        {
+            _isDisplayedItemsRebuildQueued = false;
+            RebuildDisplayedItems();
+            return;
+        }
+
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            _isDisplayedItemsRebuildQueued = false;
+            RebuildDisplayedItems();
+        });
     }
 
     /// <summary>
@@ -159,6 +246,12 @@ public partial class TableView : ListView
     {
         var currentCell = CurrentCellSlot.HasValue ? GetCellFromSlot(CurrentCellSlot.Value) : default;
 
+        if (!IsEditing && e.Key is VirtualKey.Left or VirtualKey.Right && TryHandleHierarchyArrowNavigation(e.Key))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key is VirtualKey.F2 && currentCell is { IsReadOnly: false } && !IsEditing)
         {
             e.Handled = await currentCell.BeginCellEditing(e);
@@ -235,6 +328,87 @@ public partial class TableView : ListView
             MakeSelection(newSlot, shiftKey);
             e.Handled = true;
         }
+    }
+
+    private bool TryHandleHierarchyArrowNavigation(VirtualKey key)
+    {
+        if (!IsHierarchicalEnabled || Items.Count == 0)
+        {
+            return false;
+        }
+
+        var row = (LastSelectionUnit is TableViewSelectionUnit.Row ? CurrentRowIndex : CurrentCellSlot?.Row) ?? -1;
+        var column = CurrentCellSlot?.Column ?? 0;
+
+        if (row < 0)
+        {
+            row = SelectedIndex;
+        }
+
+        if (row < 0 || row >= Items.Count)
+        {
+            return false;
+        }
+
+        if (!IsSelectableItem(Items[row]))
+        {
+            var selectableRow = GetNextSelectableRowIndex(row, key is VirtualKey.Left or VirtualKey.Up ? -1 : 1);
+            if (selectableRow < 0)
+            {
+                return false;
+            }
+
+            MakeSelection(new TableViewCellSlot(selectableRow, Math.Max(0, column)), false);
+            return true;
+        }
+
+        var item = Items[row];
+        var level = GetHierarchyLevel(item);
+        var hasChildren = HasChildItems(item);
+        var isExpanded = IsItemExpanded(item);
+
+        if (key is VirtualKey.Right)
+        {
+            if (hasChildren && !isExpanded)
+            {
+                SetItemExpanded(item, true);
+                return true;
+            }
+
+            if (hasChildren && isExpanded)
+            {
+                var firstChildRow = row + 1;
+                if (firstChildRow < Items.Count && GetHierarchyLevel(Items[firstChildRow]) == level + 1)
+                {
+                    MakeSelection(new TableViewCellSlot(firstChildRow, Math.Max(0, column)), false);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (hasChildren && isExpanded)
+        {
+            SetItemExpanded(item, false);
+            return true;
+        }
+
+        if (level <= 0)
+        {
+            return false;
+        }
+
+        for (var index = row - 1; index >= 0; index--)
+        {
+            if (GetHierarchyLevel(Items[index]) == level - 1)
+            {
+                MakeSelection(new TableViewCellSlot(index, Math.Max(0, column)), false);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     internal bool EndCellEditing(TableViewEditAction editAction, TableViewCell cell)
@@ -402,7 +576,41 @@ public partial class TableView : ListView
             }
         }
 
+        nextRow = GetNextSelectableRowIndex(nextRow, isShiftKeyDown ? -1 : 1);
+
         return new TableViewCellSlot(nextRow, nextColumn);
+    }
+
+    private int GetNextSelectableRowIndex(int startIndex, int step)
+    {
+        if (Items.Count == 0)
+        {
+            return -1;
+        }
+
+        step = step == 0 ? 1 : Math.Sign(step);
+        var index = Math.Clamp(startIndex, 0, Items.Count - 1);
+
+        for (var count = 0; count < Items.Count; count++)
+        {
+            if (IsSelectableItem(Items[index]))
+            {
+                return index;
+            }
+
+            index += step;
+
+            if (index < 0)
+            {
+                index = Items.Count - 1;
+            }
+            else if (index >= Items.Count)
+            {
+                index = 0;
+            }
+        }
+
+        return -1;
     }
 
     /// <summary>
@@ -598,6 +806,11 @@ public partial class TableView : ListView
         {
             foreach (var propertyInfo in dataType.GetProperties())
             {
+                if (ShouldSkipAutoGeneratedHierarchyProperty(propertyInfo.Name))
+                {
+                    continue;
+                }
+
                 var displayAttribute = propertyInfo.GetCustomAttributes().OfType<DisplayAttribute>().FirstOrDefault();
                 var autoGenerateField = displayAttribute?.GetAutoGenerateField();
                 if (autoGenerateField == false)
@@ -617,6 +830,34 @@ public partial class TableView : ListView
                 }
             }
         }
+    }
+
+    private bool ShouldSkipAutoGeneratedHierarchyProperty(string propertyName)
+    {
+        if (!IsHierarchicalEnabled)
+        {
+            return false;
+        }
+
+        var comparableName = GetPropertyPathLeaf(propertyName);
+        var childrenLeaf = GetPropertyPathLeaf(ChildrenPath);
+        var hasChildrenLeaf = GetPropertyPathLeaf(HasChildrenPath);
+        var isExpandedLeaf = GetPropertyPathLeaf(IsExpandedPath);
+
+        return string.Equals(comparableName, childrenLeaf, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(comparableName, hasChildrenLeaf, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(comparableName, isExpandedLeaf, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? GetPropertyPathLeaf(string? propertyPath)
+    {
+        if (string.IsNullOrWhiteSpace(propertyPath))
+        {
+            return null;
+        }
+
+        var parts = propertyPath.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 0 ? null : parts[^1];
     }
 
     /// <summary>
@@ -675,15 +916,524 @@ public partial class TableView : ListView
     /// </summary>
     private void ItemsSourceChanged(DependencyPropertyChangedEventArgs e)
     {
+        if (!ReferenceEquals(e.OldValue, e.NewValue))
+        {
+            _collapsedHierarchyItems.Clear();
+            _collapsedGroupKeys.Clear();
+        }
+
+        RefreshProcessedItemsSource(e.NewValue as IEnumerable);
+    }
+
+    private void RebuildHierarchyView()
+    {
+        RefreshProcessedItemsSource(ItemsSource as IEnumerable);
+    }
+
+    private void EnsureGroupingSortDescription()
+    {
+        if (_isUpdatingGroupingSortDescription)
+        {
+            return;
+        }
+
+        var desiredPath = string.IsNullOrWhiteSpace(GroupByPath) ? null : GroupByPath;
+
+        // If group sort is already correct, skip to avoid cascading updates.
+        if (_groupSortDescription is not null && desiredPath is not null
+            && _groupSortDescription.PropertyName == desiredPath
+            && _groupSortDescription.Direction == GroupSortDirection
+            && SortDescriptions.IndexOf(_groupSortDescription) == 0)
+        {
+            return;
+        }
+
+        _isUpdatingGroupingSortDescription = true;
+
+        try
+        {
+            using var defer = _collectionView.DeferRefresh();
+
+            if (_groupSortDescription is not null)
+            {
+                SortDescriptions.Remove(_groupSortDescription);
+                _groupSortDescription = null;
+            }
+
+            if (desiredPath is not null)
+            {
+                _groupSortDescription = new SortDescription(desiredPath, GroupSortDirection);
+                SortDescriptions.Insert(0, _groupSortDescription);
+            }
+        }
+        finally
+        {
+            _isUpdatingGroupingSortDescription = false;
+        }
+    }
+
+    internal void RefreshHierarchySorting()
+    {
+        if (IsHierarchicalEnabled)
+        {
+            RebuildHierarchyView();
+        }
+    }
+
+    private void RefreshProcessedItemsSource(IEnumerable? source)
+    {
         using var defer = _collectionView.DeferRefresh();
+
+        _collectionView.SuppressSorting = IsHierarchicalEnabled;
+        EnsureGroupingSortDescription();
+
+        _hierarchyLevelsByItem.Clear();
+        _groupHeadersByItem.Clear();
+        _groupKeysByItem.Clear();
+        _groupHeaderItemsByKey.Clear();
+        _displayItems.Clear();
+
         _collectionView.Source = null!;
 
-        if (e.NewValue is IEnumerable source)
+        if (source is not null)
         {
             EnsureAutoColumns();
-
-            _collectionView.Source = source;
+            _collectionView.Source = BuildProcessedSource(source);
         }
+
+        RebuildDisplayedItems();
+    }
+
+    private void RebuildDisplayedItems()
+    {
+        BuildGroupHeadersFromCurrentView();
+
+        _displayItems.Clear();
+
+        if (!string.IsNullOrWhiteSpace(GroupByPath) && ShowGroupHeaders)
+        {
+            object? previousGroupKey = null;
+            var hasPreviousGroup = false;
+
+            foreach (var item in _collectionView.OfType<object>())
+            {
+                var groupKey = GetNormalizedGroupKeyForItem(item);
+
+                if (!hasPreviousGroup || !Equals(previousGroupKey, groupKey))
+                {
+                    if (_groupHeaderItemsByKey.TryGetValue(groupKey, out var headerItem))
+                    {
+                        _displayItems.Add(headerItem);
+                    }
+
+                    previousGroupKey = groupKey;
+                    hasPreviousGroup = true;
+                }
+
+                if (!_collapsedGroupKeys.Contains(groupKey))
+                {
+                    _displayItems.Add(item);
+                }
+            }
+
+            RefreshRowsGroupingState();
+            return;
+        }
+
+        foreach (var item in _collectionView.OfType<object>())
+        {
+            _displayItems.Add(item);
+        }
+
+        RefreshRowsGroupingState();
+    }
+
+    private IEnumerable BuildProcessedSource(IEnumerable source)
+    {
+        if (IsHierarchicalEnabled && HasHierarchyBinding())
+        {
+            var flattened = new List<object>();
+            FlattenHierarchy(source, flattened, 0, []);
+            return flattened;
+        }
+
+        foreach (var item in source.OfType<object>())
+        {
+            _hierarchyLevelsByItem[item] = 0;
+        }
+
+        return source;
+    }
+
+    private void FlattenHierarchy(IEnumerable source, ICollection<object> target, int level, HashSet<object> path)
+    {
+        foreach (var item in GetSortedHierarchyLevelItems(source))
+        {
+            target.Add(item);
+            _hierarchyLevelsByItem[item] = level;
+
+            if (!IsHierarchicalEnabled || !HasHierarchyBinding() || !path.Add(item) || !IsItemExpanded(item))
+            {
+                continue;
+            }
+
+            try
+            {
+                var children = GetChildren(item);
+
+                if (children is IEnumerable childrenEnumerable && children is not string)
+                {
+                    FlattenHierarchy(childrenEnumerable, target, level + 1, path);
+                }
+            }
+            finally
+            {
+                path.Remove(item);
+            }
+        }
+    }
+
+    private IReadOnlyList<object> GetSortedHierarchyLevelItems(IEnumerable source)
+    {
+        var items = source.OfType<object>()
+                          .Select((item, index) => new { Item = item, Index = index })
+                          .ToList();
+
+        if (_collectionView.SortDescriptions.Count > 0)
+        {
+            items.Sort((left, right) =>
+            {
+                var comparison = _collectionView.Compare(left.Item, right.Item);
+                return comparison != 0 ? comparison : left.Index.CompareTo(right.Index);
+            });
+        }
+
+        return [.. items.Select(x => x.Item)];
+    }
+
+    private object? ResolvePropertyPathValue(object item, string propertyPath)
+    {
+        var key = (item.GetType(), propertyPath);
+
+        if (!_propertyPathAccessorCache.TryGetValue(key, out var accessor))
+        {
+            accessor = item.GetFuncCompiledPropertyPath(propertyPath);
+            _propertyPathAccessorCache[key] = accessor;
+        }
+
+        return accessor?.Invoke(item);
+    }
+
+    private bool HasHierarchyBinding()
+    {
+        return ChildrenSelector is not null || !string.IsNullOrWhiteSpace(ChildrenPath);
+    }
+
+    private IEnumerable? GetChildren(object item)
+    {
+        if (ChildrenSelector is not null)
+        {
+            return ChildrenSelector(item);
+        }
+
+        if (!string.IsNullOrWhiteSpace(ChildrenPath))
+        {
+            return ResolvePropertyPathValue(item, ChildrenPath!) as IEnumerable;
+        }
+
+        return null;
+    }
+
+    private bool TrySetSimplePropertyPathValue(object item, string propertyPath, object? value)
+    {
+        try
+        {
+            object current = item;
+            var parts = propertyPath.Split('.', StringSplitOptions.RemoveEmptyEntries);
+
+            for (var index = 0; index < parts.Length - 1; index++)
+            {
+                var propertyInfo = current.GetType().GetProperty(parts[index], BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (propertyInfo?.GetValue(current) is not { } next)
+                {
+                    return false;
+                }
+
+                current = next;
+            }
+
+            var targetProperty = current.GetType().GetProperty(parts[^1], BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (targetProperty is null || !targetProperty.CanWrite)
+            {
+                return false;
+            }
+
+            var convertedValue = value;
+            if (value is not null && targetProperty.PropertyType != value.GetType())
+            {
+                convertedValue = Convert.ChangeType(value, targetProperty.PropertyType);
+            }
+
+            targetProperty.SetValue(current, convertedValue);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    internal bool HasChildItems(object? item)
+    {
+        if (!IsHierarchicalEnabled || item is null)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(HasChildrenPath) && ResolvePropertyPathValue(item, HasChildrenPath!) is bool hasChildren)
+        {
+            return hasChildren;
+        }
+
+        var children = GetChildren(item);
+        if (children is null || children is string)
+        {
+            return false;
+        }
+
+        if (children is ICollection collection)
+        {
+            return collection.Count > 0;
+        }
+
+        var enumerator = children.GetEnumerator();
+        return enumerator.MoveNext();
+    }
+
+    internal bool IsItemExpanded(object? item)
+    {
+        if (!IsHierarchicalEnabled || item is null || !HasChildItems(item))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(IsExpandedPath) && ResolvePropertyPathValue(item, IsExpandedPath!) is bool isExpanded)
+        {
+            return isExpanded;
+        }
+
+        return !_collapsedHierarchyItems.Contains(item);
+    }
+
+    internal void ToggleItemExpansion(object? item)
+    {
+        if (item is null || !HasChildItems(item))
+        {
+            return;
+        }
+
+        SetItemExpanded(item, !IsItemExpanded(item));
+    }
+
+    internal void SetItemExpanded(object item, bool isExpanded)
+    {
+        if (!HasChildItems(item))
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(IsExpandedPath))
+        {
+            _ = TrySetSimplePropertyPathValue(item, IsExpandedPath!, isExpanded);
+        }
+
+        if (isExpanded)
+        {
+            _collapsedHierarchyItems.Remove(item);
+            OnRowExpanded(new TableViewRowExpansionChangedEventArgs(item, _collectionView.IndexOf(item), true));
+        }
+        else
+        {
+            _collapsedHierarchyItems.Add(item);
+            OnRowCollapsed(new TableViewRowExpansionChangedEventArgs(item, _collectionView.IndexOf(item), false));
+        }
+
+        RebuildHierarchyView();
+    }
+
+    private void BuildGroupHeadersFromCurrentView()
+    {
+        _groupHeadersByItem.Clear();
+        _groupKeysByItem.Clear();
+        _groupHeaderItemsByKey.Clear();
+
+        if (string.IsNullOrWhiteSpace(GroupByPath))
+        {
+            return;
+        }
+
+        var groupedItems = _collectionView.OfType<object>()
+                                          .Select(item => new
+                                          {
+                                              Item = item,
+                                              GroupKey = ResolvePropertyPathValue(item, GroupByPath!)
+                                          })
+                                          .ToList();
+
+        if (groupedItems.Count == 0)
+        {
+            return;
+        }
+
+        var groupStartIndex = 0;
+
+        for (var index = 1; index <= groupedItems.Count; index++)
+        {
+            var isBoundary = index == groupedItems.Count
+                             || !Equals(groupedItems[index - 1].GroupKey, groupedItems[index].GroupKey);
+
+            if (!isBoundary)
+            {
+                continue;
+            }
+
+            var startItem = groupedItems[groupStartIndex];
+            var count = index - groupStartIndex;
+            var groupKey = NormalizeGroupKey(startItem.GroupKey);
+
+            for (var groupItemIndex = groupStartIndex; groupItemIndex < index; groupItemIndex++)
+            {
+                _groupKeysByItem[groupedItems[groupItemIndex].Item] = groupKey;
+            }
+
+            if (ShowGroupHeaders)
+            {
+                // Only count top-level (non-child) items so hierarchy children don't inflate the group count.
+                var topLevelCount = Enumerable.Range(groupStartIndex, count)
+                                              .Count(i => GetHierarchyLevel(groupedItems[i].Item) == 0);
+
+                var headerItem = new GroupHeaderRowItem
+                {
+                    GroupKey = groupKey,
+                    Header = FormatGroupHeader(startItem.GroupKey, topLevelCount)
+                };
+
+                _groupHeaderItemsByKey[groupKey] = headerItem;
+                _groupKeysByItem[headerItem] = groupKey;
+                _groupHeadersByItem[headerItem] = headerItem.Header;
+            }
+
+            groupStartIndex = index;
+        }
+    }
+
+    private string FormatGroupHeader(object? groupKey, int count)
+    {
+        var title = groupKey?.ToString() ?? "(null)";
+
+        if (!ShowGroupItemCount)
+        {
+            return title;
+        }
+
+        return $"{title} ({count})";
+    }
+
+    private void RefreshRowsGroupingState()
+    {
+        foreach (var row in _rows)
+        {
+            row.RowPresenter?.SetRowHeaderTemplate();
+            row.RowPresenter?.SetRowHeaderVisibility();
+            row.UpdateHierarchyPresentation();
+        }
+    }
+
+    internal int GetHierarchyLevel(object? item)
+    {
+        if (item is not null && _hierarchyLevelsByItem.TryGetValue(item, out var level))
+        {
+            return level;
+        }
+
+        return 0;
+    }
+
+    internal bool TryGetGroupHeader(object? item, out string header)
+    {
+        header = string.Empty;
+
+        if (item is not null && _groupHeadersByItem.TryGetValue(item, out var value))
+        {
+            header = value;
+            return true;
+        }
+
+        return false;
+    }
+
+    internal bool HasGroupHeader(object? item)
+    {
+        return item is not null && _groupHeadersByItem.ContainsKey(item);
+    }
+
+    internal bool IsGroupHeaderItem(object? item)
+    {
+        return item is GroupHeaderRowItem;
+    }
+
+    internal bool IsSelectableItem(object? item)
+    {
+        return item is not GroupHeaderRowItem;
+    }
+
+    internal bool IsGroupExpanded(object? item)
+    {
+        if (item is null || !_groupKeysByItem.TryGetValue(item, out var groupKey))
+        {
+            return true;
+        }
+
+        return !_collapsedGroupKeys.Contains(groupKey);
+    }
+
+    internal bool ShouldShowGroupedItemContent(object? item)
+    {
+        return item is not GroupHeaderRowItem;
+    }
+
+    internal void ToggleGroupExpansion(object? item)
+    {
+        if (item is null || !HasGroupHeader(item) || !_groupKeysByItem.TryGetValue(item, out var groupKey))
+        {
+            return;
+        }
+
+        if (_collapsedGroupKeys.Contains(groupKey))
+        {
+            _collapsedGroupKeys.Remove(groupKey);
+        }
+        else
+        {
+            _collapsedGroupKeys.Add(groupKey);
+        }
+
+        RebuildDisplayedItems();
+    }
+
+    private object GetNormalizedGroupKeyForItem(object item)
+    {
+        if (_groupKeysByItem.TryGetValue(item, out var groupKey))
+        {
+            return groupKey;
+        }
+
+        return NormalizeGroupKey(ResolvePropertyPathValue(item, GroupByPath!));
+    }
+
+    private static object NormalizeGroupKey(object? groupKey)
+    {
+        return groupKey ?? NullGroupKey;
     }
 
     /// <summary>
@@ -962,6 +1712,17 @@ public partial class TableView : ListView
         if (!slot.IsValidRow(this))
         {
             return;
+        }
+
+        if (!IsSelectableItem(Items[slot.Row]))
+        {
+            var selectableRow = GetNextSelectableRowIndex(slot.Row, 1);
+            if (selectableRow < 0)
+            {
+                return;
+            }
+
+            slot = new TableViewCellSlot(selectableRow, slot.Column);
         }
 
         if (SelectionMode != ListViewSelectionMode.None)
@@ -1396,10 +2157,19 @@ public partial class TableView : ListView
     /// <param name="index">The index of the row to scroll into view.</param>
     public async Task<TableViewRow?> ScrollRowIntoView(int index)
     {
-        if (_scrollViewer is null || index < 0) return default!;
+        if (_scrollViewer is null || index < 0 || index >= Items.Count)
+        {
+            return default!;
+        }
 
         var item = Items[index];
         index = Items.IndexOf(item); // if the ItemsSource has duplicate items in it. ScrollIntoView will only bring first index of the item.
+
+        if (index < 0 || index >= Items.Count)
+        {
+            return default!;
+        }
+
         ScrollIntoView(item);
 
         var tries = 0;

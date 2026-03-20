@@ -119,6 +119,8 @@ public partial class TableViewColumnHeader : ContentControl
                 _tableView.SortDescriptions.Add(
                     new ColumnSortDescription(Column!, sortPath, direction.Value));
             }
+
+            _tableView.RefreshHierarchySorting();
         }
     }
 
@@ -141,6 +143,7 @@ public partial class TableViewColumnHeader : ContentControl
             _tableView.DeselectAll();
             Column.SortDirection = null;
             collectionView.SortDescriptions.RemoveWhere(x => x is ColumnSortDescription columnSort && columnSort.Column == Column);
+            _tableView.RefreshHierarchySorting();
         }
     }
 
@@ -208,7 +211,14 @@ public partial class TableViewColumnHeader : ContentControl
 
             if (!eventArgs.Handled)
             {
-                DoSort(GetNextSortDirection(), !isCtrlButtonDown);
+                try
+                {
+                    DoSort(GetNextSortDirection(), !isCtrlButtonDown);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"TableView header tap sort failed: {ex}");
+                }
             }
         }
 

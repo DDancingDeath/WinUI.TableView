@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -64,6 +65,66 @@ public partial class TableView
     /// Identifies the AutoGenerateColumns dependency property.
     /// </summary>
     public static readonly DependencyProperty AutoGenerateColumnsProperty = DependencyProperty.Register(nameof(AutoGenerateColumns), typeof(bool), typeof(TableView), new PropertyMetadata(true, OnAutoGenerateColumnsChanged));
+
+    /// <summary>
+    /// Identifies the HierarchyItemsSourcePath dependency property.
+    /// </summary>
+    public static readonly DependencyProperty HierarchyItemsSourcePathProperty = DependencyProperty.Register(nameof(HierarchyItemsSourcePath), typeof(string), typeof(TableView), new PropertyMetadata(default(string), OnHierarchyItemsSourcePathChanged));
+
+    /// <summary>
+    /// Identifies the HierarchyIndent dependency property.
+    /// </summary>
+    public static readonly DependencyProperty HierarchyIndentProperty = DependencyProperty.Register(nameof(HierarchyIndent), typeof(double), typeof(TableView), new PropertyMetadata(16d, OnHierarchyIndentChanged));
+
+    /// <summary>
+    /// Identifies the IsHierarchicalEnabled dependency property.
+    /// </summary>
+    public static readonly DependencyProperty IsHierarchicalEnabledProperty = DependencyProperty.Register(nameof(IsHierarchicalEnabled), typeof(bool), typeof(TableView), new PropertyMetadata(false, OnIsHierarchicalEnabledChanged));
+
+    /// <summary>
+    /// Identifies the ChildrenPath dependency property.
+    /// </summary>
+    public static readonly DependencyProperty ChildrenPathProperty = HierarchyItemsSourcePathProperty;
+
+    /// <summary>
+    /// Identifies the IndentSize dependency property.
+    /// </summary>
+    public static readonly DependencyProperty IndentSizeProperty = HierarchyIndentProperty;
+
+    /// <summary>
+    /// Identifies the HasChildrenPath dependency property.
+    /// </summary>
+    public static readonly DependencyProperty HasChildrenPathProperty = DependencyProperty.Register(nameof(HasChildrenPath), typeof(string), typeof(TableView), new PropertyMetadata(default(string), OnHierarchyBindingChanged));
+
+    /// <summary>
+    /// Identifies the IsExpandedPath dependency property.
+    /// </summary>
+    public static readonly DependencyProperty IsExpandedPathProperty = DependencyProperty.Register(nameof(IsExpandedPath), typeof(string), typeof(TableView), new PropertyMetadata(default(string), OnHierarchyBindingChanged));
+
+    /// <summary>
+    /// Identifies the ChildrenSelector dependency property.
+    /// </summary>
+    public static readonly DependencyProperty ChildrenSelectorProperty = DependencyProperty.Register(nameof(ChildrenSelector), typeof(Func<object, IEnumerable>), typeof(TableView), new PropertyMetadata(default(Func<object, IEnumerable>), OnHierarchyBindingChanged));
+
+    /// <summary>
+    /// Identifies the GroupByPath dependency property.
+    /// </summary>
+    public static readonly DependencyProperty GroupByPathProperty = DependencyProperty.Register(nameof(GroupByPath), typeof(string), typeof(TableView), new PropertyMetadata(default(string), OnGroupByPathChanged));
+
+    /// <summary>
+    /// Identifies the ShowGroupHeaders dependency property.
+    /// </summary>
+    public static readonly DependencyProperty ShowGroupHeadersProperty = DependencyProperty.Register(nameof(ShowGroupHeaders), typeof(bool), typeof(TableView), new PropertyMetadata(true, OnShowGroupHeadersChanged));
+
+    /// <summary>
+    /// Identifies the GroupSortDirection dependency property.
+    /// </summary>
+    public static readonly DependencyProperty GroupSortDirectionProperty = DependencyProperty.Register(nameof(GroupSortDirection), typeof(SortDirection), typeof(TableView), new PropertyMetadata(SortDirection.Ascending, OnGroupSortDirectionChanged));
+
+    /// <summary>
+    /// Identifies the ShowGroupItemCount dependency property.
+    /// </summary>
+    public static readonly DependencyProperty ShowGroupItemCountProperty = DependencyProperty.Register(nameof(ShowGroupItemCount), typeof(bool), typeof(TableView), new PropertyMetadata(true, OnShowGroupItemCountChanged));
 
     /// <summary>
     /// Identifies the IsReadOnly dependency property.
@@ -484,6 +545,114 @@ public partial class TableView
     }
 
     /// <summary>
+    /// Gets or sets the property path that contains child collections used to flatten parent-child hierarchy.
+    /// </summary>
+    public string? HierarchyItemsSourcePath
+    {
+        get => (string?)GetValue(HierarchyItemsSourcePathProperty);
+        set => SetValue(HierarchyItemsSourcePathProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the indentation width in pixels applied to hierarchy levels.
+    /// </summary>
+    public double HierarchyIndent
+    {
+        get => (double)GetValue(HierarchyIndentProperty);
+        set => SetValue(HierarchyIndentProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether hierarchical row processing is enabled.
+    /// </summary>
+    public bool IsHierarchicalEnabled
+    {
+        get => (bool)GetValue(IsHierarchicalEnabledProperty);
+        set => SetValue(IsHierarchicalEnabledProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the child collection property path used for hierarchical rows.
+    /// </summary>
+    public string? ChildrenPath
+    {
+        get => (string?)GetValue(ChildrenPathProperty);
+        set => SetValue(ChildrenPathProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the indentation size for each hierarchy level.
+    /// </summary>
+    public double IndentSize
+    {
+        get => (double)GetValue(IndentSizeProperty);
+        set => SetValue(IndentSizeProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the property path used to determine whether an item has children.
+    /// </summary>
+    public string? HasChildrenPath
+    {
+        get => (string?)GetValue(HasChildrenPathProperty);
+        set => SetValue(HasChildrenPathProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the property path used to determine or update expansion state.
+    /// </summary>
+    public string? IsExpandedPath
+    {
+        get => (string?)GetValue(IsExpandedPathProperty);
+        set => SetValue(IsExpandedPathProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the delegate used to fetch child collections for an item.
+    /// </summary>
+    public Func<object, IEnumerable>? ChildrenSelector
+    {
+        get => (Func<object, IEnumerable>?)GetValue(ChildrenSelectorProperty);
+        set => SetValue(ChildrenSelectorProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the property path used to derive row groups.
+    /// </summary>
+    public string? GroupByPath
+    {
+        get => (string?)GetValue(GroupByPathProperty);
+        set => SetValue(GroupByPathProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether group headers are shown in the row header column.
+    /// </summary>
+    public bool ShowGroupHeaders
+    {
+        get => (bool)GetValue(ShowGroupHeadersProperty);
+        set => SetValue(ShowGroupHeadersProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the sorting direction used for grouping.
+    /// </summary>
+    public SortDirection GroupSortDirection
+    {
+        get => (SortDirection)GetValue(GroupSortDirectionProperty);
+        set => SetValue(GroupSortDirectionProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether group headers show item counts.
+    /// </summary>
+    public bool ShowGroupItemCount
+    {
+        get => (bool)GetValue(ShowGroupItemCountProperty);
+        set => SetValue(ShowGroupItemCountProperty, value);
+    }
+
+    /// <summary>
     /// Gets or sets a value indicating whether the TableView is read-only. This will override what is set on individual column.
     /// </summary>
     public bool IsReadOnly
@@ -853,6 +1022,96 @@ public partial class TableView
     }
 
     /// <summary>
+    /// Handles changes to the HierarchyItemsSourcePath property.
+    /// </summary>
+    private static void OnHierarchyItemsSourcePathChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TableView tableView)
+        {
+            tableView.RebuildHierarchyView();
+        }
+    }
+
+    /// <summary>
+    /// Handles changes to the HierarchyIndent property.
+    /// </summary>
+    private static void OnHierarchyIndentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TableView tableView)
+        {
+            tableView.RefreshRowsGroupingState();
+        }
+    }
+
+    /// <summary>
+    /// Handles changes to the IsHierarchicalEnabled property.
+    /// </summary>
+    private static void OnIsHierarchicalEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TableView tableView)
+        {
+            tableView.RebuildHierarchyView();
+        }
+    }
+
+    /// <summary>
+    /// Handles changes to hierarchy binding properties.
+    /// </summary>
+    private static void OnHierarchyBindingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TableView tableView && tableView.IsHierarchicalEnabled)
+        {
+            tableView.RebuildHierarchyView();
+        }
+    }
+
+    /// <summary>
+    /// Handles changes to the GroupByPath property.
+    /// </summary>
+    private static void OnGroupByPathChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TableView tableView)
+        {
+            tableView.EnsureGroupingSortDescription();
+            tableView.RebuildDisplayedItems();
+        }
+    }
+
+    /// <summary>
+    /// Handles changes to the ShowGroupHeaders property.
+    /// </summary>
+    private static void OnShowGroupHeadersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TableView tableView)
+        {
+            tableView.RebuildDisplayedItems();
+        }
+    }
+
+    /// <summary>
+    /// Handles changes to the GroupSortDirection property.
+    /// </summary>
+    private static void OnGroupSortDirectionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TableView tableView)
+        {
+            tableView.EnsureGroupingSortDescription();
+            tableView.RebuildDisplayedItems();
+        }
+    }
+
+    /// <summary>
+    /// Handles changes to the ShowGroupItemCount property.
+    /// </summary>
+    private static void OnShowGroupItemCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TableView tableView)
+        {
+            tableView.RebuildDisplayedItems();
+        }
+    }
+
+    /// <summary>
     /// Handles changes to the CornerButtonMode property.
     /// </summary>
     private static void OnCornerButtonModeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -1116,7 +1375,14 @@ public partial class TableView
     /// </summary>
     private void OnBaseItemsSourceChanged(DependencyObject sender, DependencyProperty dp)
     {
-        throw new InvalidOperationException("Setting this property directly is not allowed. Use TableView.ItemsSource instead.");
+        if (_isUpdatingBaseItemsSource || ReferenceEquals(base.ItemsSource, _displayItems))
+        {
+            return;
+        }
+
+        _isUpdatingBaseItemsSource = true;
+        base.ItemsSource = _displayItems;
+        _isUpdatingBaseItemsSource = false;
     }
 
     /// <summary>
@@ -1126,7 +1392,7 @@ public partial class TableView
     {
         if (!_shouldThrowSelectionModeChangedException)
         {
-            throw new InvalidOperationException("Setting this property directly is not allowed. Use TableView.SelectionMode instead.");
+            UpdateBaseSelectionMode();
         }
     }
 }

@@ -5,7 +5,6 @@ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-xmlns:controls="using:Microsoft.UI.Xaml.Controls"
 xmlns:tableView="using:WinUI.TableView"
 mc:Ignorable="d"
 Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
@@ -237,19 +236,17 @@ Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
             </ScrollViewer>
         </Border>
 
-        <!-- GridSplitter for resizable navigation panel -->
-        <controls:GridSplitter Grid.Row="2" 
-                              Grid.Column="1"
-                              Width="8"
-                              ResizeDirection="Columns"
-                              ResizeBehavior="BasedOnAlignment"
-                              HorizontalAlignment="Stretch"
-                              Background="Transparent"
-                              CursorBehavior="ChangeOnSplitterHover">
-            <controls:GridSplitter.RenderTransform>
-                <TranslateTransform X="-3" />
-            </controls:GridSplitter.RenderTransform>
-        </controls:GridSplitter>
+        <!-- Resizable Splitter -->
+        <Border Grid.Row="2" 
+                Grid.Column="1"
+                x:Name="Splitter"
+                Width="8"
+                Background="Transparent"
+                PointerEntered="Splitter_PointerEntered"
+                PointerExited="Splitter_PointerExited"
+                PointerPressed="Splitter_PointerPressed"
+                PointerMoved="Splitter_PointerMoved"
+                PointerReleased="Splitter_PointerReleased" />
 
         <!-- Main Content Area with TableView -->
         <Grid Grid.Row="2" Grid.Column="2" Padding="16">

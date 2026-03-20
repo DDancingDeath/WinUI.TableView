@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using FileExplorerSample.Models;
 using FileExplorerSample.Services;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Input;
 
 namespace FileExplorerSample;
@@ -18,6 +19,9 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
     private string _currentPath;
     private string _statusMessage;
     private string _selectionText;
+    private bool _isResizing;
+    private double _startX;
+    private double _startWidth;
 
     /// <summary>
     /// Initializes the new instance of the MainPage class.
@@ -299,7 +303,47 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             RequestedTheme = ElementTheme.Light;
         }
     }
+
+    private void Splitter_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast);
+    }
+
+    private void Splitter_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isResizing)
+        {
+            ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
+        }
+    }
+
+    private void Splitter_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _isResizing = true;
+        _startX = e.GetCurrentPoint(this).Position.X;
+        _startWidth = Content is Grid grid ? grid.ColumnDefinitions[0].ActualWidth : 250;
+        Splitter.CapturePointer(e.Pointer);
+    }
+
+    private void Splitter_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (_isResizing && Content is Grid grid)
+        {
+            var currentX = e.GetCurrentPoint(this).Position.X;
+            var delta = currentX - _startX;
+            var newWidth = Math.Clamp(_startWidth + delta, 150, 400);
+            grid.ColumnDefinitions[0].Width = new GridLength(newWidth);
+        }
+    }
+
+    private void Splitter_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        _isResizing = false;
+        Splitter.ReleasePointerCapture(e.Pointer);
+        ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
+    }
 }
+
 
 
 

@@ -119,6 +119,42 @@
                         </tableView:TableView>
                     </Grid>
                 </TabViewItem>
+                
+                <!-- Tab for testing frozen colum demo by adding frozenColumnCount property and horizontally scrolling-->
+                <TabViewItem Header="Frozen Columns Demo">
+                    <Grid Padding="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Orientation="Horizontal" Spacing="12" Padding="8">
+                            <TextBlock Text="Frozen Columns Demo:" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <TextBlock Text="The first 2 columns (Product &amp; Category) stay fixed while scrolling horizontally" 
+                                       VerticalAlignment="Center" 
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+
+                        <tableView:TableView
+                            Grid.Row="1"
+                            AutoGenerateColumns="False"
+                            ItemsSource="{x:Bind ProductRows}"
+                            AlternateRowBackground="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            FrozenColumnCount="2"
+                            SelectionMode="Single">
+                            <tableView:TableView.Columns>
+                                <tableView:TableViewTextColumn Header="Product" Binding="{Binding Name}" MinWidth="200" />
+                                <tableView:TableViewTextColumn Header="Category" Binding="{Binding Category}" MinWidth="140" />
+                                <tableView:TableViewNumberColumn Header="Price" Binding="{Binding Price}" MinWidth="120" />
+                                <tableView:TableViewNumberColumn Header="Stock" Binding="{Binding Stock}" MinWidth="120" />
+                                <tableView:TableViewCheckBoxColumn Header="Available" Binding="{Binding IsAvailable}" MinWidth="120" />
+                                <tableView:TableViewDateColumn Header="Added" Binding="{Binding DateAdded}" MinWidth="160" />
+                                <tableView:TableViewComboBoxColumn Header="Rating" Binding="{Binding Rating}" MinWidth="140"
+                                    ItemsSource="{x:Bind RatingOptions}" />
+                            </tableView:TableView.Columns>
+                        </tableView:TableView>
+                    </Grid>
+                </TabViewItem>
             </TabView>
         </Grid>
     </Page.Content>

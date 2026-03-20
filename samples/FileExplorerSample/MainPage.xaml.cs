@@ -22,6 +22,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
     private bool _isResizing;
     private double _startX;
     private double _startWidth;
+    private ViewMode _currentViewMode;
 
     /// <summary>
     /// Initializes the new instance of the MainPage class.
@@ -37,6 +38,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         _currentPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         _statusMessage = string.Empty;
         _selectionText = string.Empty;
+        _currentViewMode = ViewMode.Details;
 
         FileItems = new ObservableCollection<FileSystemItem>();
         Locations = new ObservableCollection<LocationItem>(_fileSystemService.GetCommonLocations());
@@ -66,9 +68,15 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             {
                 _currentPath = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(TabTitle));
             }
         }
     }
+
+    /// <summary>
+    /// Gets the tab title (folder name).
+    /// </summary>
+    public string TabTitle => GetFolderName(CurrentPath);
 
     /// <summary>
     /// Gets or sets the status bar message.
@@ -98,6 +106,50 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             {
                 _selectionText = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(HasSelection));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets whether there is a selection.
+    /// </summary>
+    public Visibility HasSelection => string.IsNullOrEmpty(_selectionText) ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>
+    /// Gets the folder name from a path.
+    /// </summary>
+    /// <param name="path">The full path.</param>
+    /// <returns>The folder name.</returns>
+    public string GetFolderName(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return "File Explorer";
+
+        try
+        {
+            var dirInfo = new DirectoryInfo(path);
+            return dirInfo.Name;
+        }
+        catch
+        {
+            return "File Explorer";
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the current view mode.
+    /// </summary>
+    public ViewMode CurrentViewMode
+    {
+        get => _currentViewMode;
+        set
+        {
+            if (_currentViewMode != value)
+            {
+                _currentViewMode = value;
+                OnPropertyChanged();
+                ApplyViewMode();
             }
         }
     }
@@ -238,7 +290,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
 
     private void FileTableView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (FileTableView.SelectedItem is FileSystemItem item)
+        if (DetailsTableView.SelectedItem is FileSystemItem item)
         {
             if (item.IsFolder)
             {
@@ -267,18 +319,18 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
 
     private void FileTableView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var selectedCount = FileTableView.SelectedItems.Count;
+        var selectedCount = DetailsTableView.SelectedItems.Count;
         if (selectedCount == 0)
         {
             SelectionText = string.Empty;
         }
-        else if (selectedCount == 1 && FileTableView.SelectedItem is FileSystemItem item)
+        else if (selectedCount == 1 && DetailsTableView.SelectedItem is FileSystemItem item)
         {
             SelectionText = item.IsFolder ? "1 folder selected" : $"1 item selected ({item.SizeDisplay})";
         }
         else
         {
-            var totalSize = FileTableView.SelectedItems
+            var totalSize = DetailsTableView.SelectedItems
                 .Cast<FileSystemItem>()
                 .Where(x => !x.IsFolder)
                 .Sum(x => x.Size);
@@ -342,7 +394,203 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         Splitter.ReleasePointerCapture(e.Pointer);
         ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
     }
+
+    private void ViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewMenuFlyout.ShowAt(ViewButton);
+    }
+
+    private void ViewModeMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem menuItem && menuItem.Tag is string viewModeString)
+        {
+            if (Enum.TryParse<ViewMode>(viewModeString, out var viewMode))
+            {
+                CurrentViewMode = viewMode;
+            }
+        }
+    }
+
+    private void ApplyViewMode()
+    {
+        switch (CurrentViewMode)
+        {
+            case ViewMode.Details:
+                // Show TableView (current default)
+                DetailsTableView.Visibility = Visibility.Visible;
+                IconsGridView.Visibility = Visibility.Collapsed;
+                ListGridView.Visibility = Visibility.Collapsed;
+                TilesGridView.Visibility = Visibility.Collapsed;
+                ContentGridView.Visibility = Visibility.Collapsed;
+                break;
+
+            case ViewMode.ExtraLargeIcons:
+                // Show GridView with extra large icons
+                DetailsTableView.Visibility = Visibility.Collapsed;
+                IconsGridView.Visibility = Visibility.Visible;
+                ListGridView.Visibility = Visibility.Collapsed;
+                TilesGridView.Visibility = Visibility.Collapsed;
+                ContentGridView.Visibility = Visibility.Collapsed;
+                IconsGridView.ItemTemplate = Resources["ExtraLargeIconViewTemplate"] as DataTemplate;
+                UpdateIconSize();
+                break;
+
+            case ViewMode.LargeIcons:
+                // Show GridView with large icons
+                DetailsTableView.Visibility = Visibility.Collapsed;
+                IconsGridView.Visibility = Visibility.Visible;
+                ListGridView.Visibility = Visibility.Collapsed;
+                TilesGridView.Visibility = Visibility.Collapsed;
+                ContentGridView.Visibility = Visibility.Collapsed;
+                IconsGridView.ItemTemplate = Resources["LargeIconViewTemplate"] as DataTemplate;
+                UpdateIconSize();
+                break;
+
+            case ViewMode.MediumIcons:
+                // Show GridView with medium icons
+                DetailsTableView.Visibility = Visibility.Collapsed;
+                IconsGridView.Visibility = Visibility.Visible;
+                ListGridView.Visibility = Visibility.Collapsed;
+                TilesGridView.Visibility = Visibility.Collapsed;
+                ContentGridView.Visibility = Visibility.Collapsed;
+                IconsGridView.ItemTemplate = Resources["MediumIconViewTemplate"] as DataTemplate;
+                UpdateIconSize();
+                break;
+
+            case ViewMode.SmallIcons:
+                // Show GridView with small icons
+                DetailsTableView.Visibility = Visibility.Collapsed;
+                IconsGridView.Visibility = Visibility.Visible;
+                ListGridView.Visibility = Visibility.Collapsed;
+                TilesGridView.Visibility = Visibility.Collapsed;
+                ContentGridView.Visibility = Visibility.Collapsed;
+                IconsGridView.ItemTemplate = Resources["SmallIconViewTemplate"] as DataTemplate;
+                UpdateIconSize();
+                break;
+
+            case ViewMode.List:
+                // Show compact list
+                DetailsTableView.Visibility = Visibility.Collapsed;
+                IconsGridView.Visibility = Visibility.Collapsed;
+                ListGridView.Visibility = Visibility.Visible;
+                TilesGridView.Visibility = Visibility.Collapsed;
+                ContentGridView.Visibility = Visibility.Collapsed;
+                break;
+
+            case ViewMode.Tiles:
+                // Show tiles view
+                DetailsTableView.Visibility = Visibility.Collapsed;
+                IconsGridView.Visibility = Visibility.Collapsed;
+                ListGridView.Visibility = Visibility.Collapsed;
+                TilesGridView.Visibility = Visibility.Visible;
+                ContentGridView.Visibility = Visibility.Collapsed;
+                break;
+
+            case ViewMode.Content:
+                // Show content view
+                DetailsTableView.Visibility = Visibility.Collapsed;
+                IconsGridView.Visibility = Visibility.Collapsed;
+                ListGridView.Visibility = Visibility.Collapsed;
+                TilesGridView.Visibility = Visibility.Collapsed;
+                ContentGridView.Visibility = Visibility.Visible;
+                break;
+        }
+    }
+
+    private void UpdateIconSize()
+    {
+        var (itemWidth, itemHeight) = CurrentViewMode switch
+        {
+            ViewMode.ExtraLargeIcons => (200.0, 220.0),
+            ViewMode.LargeIcons => (120.0, 130.0),
+            ViewMode.MediumIcons => (90.0, 90.0),
+            ViewMode.SmallIcons => (70.0, 70.0),
+            _ => (120.0, 130.0)
+        };
+
+        if (IconsGridView.ItemsPanelRoot is ItemsWrapGrid wrapGrid)
+        {
+            wrapGrid.ItemWidth = itemWidth;
+            wrapGrid.ItemHeight = itemHeight;
+        }
+    }
+
+    private void GridView_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is FileSystemItem item && item.IsFolder)
+        {
+            NavigateTo(item.Path);
+        }
+    }
+
+    private void GridView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var gridView = sender as GridView;
+        var selectedCount = gridView?.SelectedItems.Count ?? 0;
+        
+        if (selectedCount == 0)
+        {
+            SelectionText = string.Empty;
+        }
+        else if (selectedCount == 1 && gridView?.SelectedItem is FileSystemItem item)
+        {
+            SelectionText = item.IsFolder ? "1 folder selected" : $"1 item selected ({item.SizeDisplay})";
+        }
+        else
+        {
+            var totalSize = gridView?.SelectedItems
+                .Cast<FileSystemItem>()
+                .Where(x => !x.IsFolder)
+                .Sum(x => x.Size) ?? 0;
+            
+            var sizeDisplay = totalSize < 1024 ? $"{totalSize} bytes" :
+                             totalSize < 1024 * 1024 ? $"{totalSize / 1024.0:F2} KB" :
+                             totalSize < 1024 * 1024 * 1024 ? $"{totalSize / (1024.0 * 1024.0):F2} MB" :
+                             $"{totalSize / (1024.0 * 1024.0 * 1024.0):F2} GB";
+            
+            SelectionText = $"{selectedCount} items selected ({sizeDisplay})";
+        }
+    }
+
+    private void ListView_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is FileSystemItem item && item.IsFolder)
+        {
+            NavigateTo(item.Path);
+        }
+    }
+
+    private void ListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var listView = sender as ListView;
+        var selectedCount = listView?.SelectedItems.Count ?? 0;
+        
+        if (selectedCount == 0)
+        {
+            SelectionText = string.Empty;
+        }
+        else if (selectedCount == 1 && listView?.SelectedItem is FileSystemItem item)
+        {
+            SelectionText = item.IsFolder ? "1 folder selected" : $"1 item selected ({item.SizeDisplay})";
+        }
+        else
+        {
+            var totalSize = listView?.SelectedItems
+                .Cast<FileSystemItem>()
+                .Where(x => !x.IsFolder)
+                .Sum(x => x.Size) ?? 0;
+            
+            var sizeDisplay = totalSize < 1024 ? $"{totalSize} bytes" :
+                             totalSize < 1024 * 1024 ? $"{totalSize / 1024.0:F2} KB" :
+                             totalSize < 1024 * 1024 * 1024 ? $"{totalSize / (1024.0 * 1024.0):F2} MB" :
+                             $"{totalSize / (1024.0 * 1024.0 * 1024.0):F2} GB";
+            
+            SelectionText = $"{selectedCount} items selected ({sizeDisplay})";
+        }
+    }
 }
+
+
 
 
 

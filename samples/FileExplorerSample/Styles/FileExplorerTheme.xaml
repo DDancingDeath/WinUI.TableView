@@ -8,14 +8,14 @@
             <!-- Row Hover/Selection Colors -->
             <Color x:Key="FileExplorerRowPointerOverColor">#E6F3FF</Color>
             <Color x:Key="FileExplorerRowPressedColor">#CCE8FF</Color>
-            <Color x:Key="FileExplorerRowSelectedColor">#CCE8FF</Color>
-            <Color x:Key="FileExplorerRowSelectedPointerOverColor">#B3DFFF</Color>
-            <Color x:Key="FileExplorerRowSelectedPressedColor">#99D6FF</Color>
+            <Color x:Key="FileExplorerRowSelectedColor">#F3F3F3</Color>
+            <Color x:Key="FileExplorerRowSelectedPointerOverColor">#E6F3FF</Color>
+            <Color x:Key="FileExplorerRowSelectedPressedColor">#CCE8FF</Color>
             
             <!-- Background Colors -->
             <Color x:Key="FileExplorerBackgroundColor">#FFFFFF</Color>
             <Color x:Key="FileExplorerAlternateRowColor">#FFFFFF</Color>
-            <Color x:Key="FileExplorerSidebarBackgroundColor">#F3F3F3</Color>
+            <Color x:Key="FileExplorerSidebarBackgroundColor">#FFFFFF</Color>
             <Color x:Key="FileExplorerTitleBarBackgroundColor">#F3F3F3</Color>
             
             <!-- Border Colors -->
@@ -30,23 +30,23 @@
             <Color x:Key="FileExplorerButtonPressedColor">#D4D4D4</Color>
             
             <!-- Sidebar Item Hover Colors -->
-            <Color x:Key="FileExplorerSidebarItemHoverColor">#E6E6E6</Color>
-            <Color x:Key="FileExplorerSidebarItemPressedColor">#D4D4D4</Color>
-            <Color x:Key="FileExplorerSidebarItemSelectedColor">#E6E6E6</Color>
+            <Color x:Key="FileExplorerSidebarItemHoverColor">#E6F3FF</Color>
+            <Color x:Key="FileExplorerSidebarItemPressedColor">#CCE8FF</Color>
+            <Color x:Key="FileExplorerSidebarItemSelectedColor">#F3F3F3</Color>
         </ResourceDictionary>
 
         <ResourceDictionary x:Key="Dark">
             <!-- Row Hover/Selection Colors (matching Windows 11 Dark Mode File Explorer) -->
             <Color x:Key="FileExplorerRowPointerOverColor">#2B2B2B</Color>
             <Color x:Key="FileExplorerRowPressedColor">#3A3A3A</Color>
-            <Color x:Key="FileExplorerRowSelectedColor">#3A3A3A</Color>
-            <Color x:Key="FileExplorerRowSelectedPointerOverColor">#454545</Color>
-            <Color x:Key="FileExplorerRowSelectedPressedColor">#505050</Color>
+            <Color x:Key="FileExplorerRowSelectedColor">#2B2B2B</Color>
+            <Color x:Key="FileExplorerRowSelectedPointerOverColor">#2B2B2B</Color>
+            <Color x:Key="FileExplorerRowSelectedPressedColor">#3A3A3A</Color>
             
             <!-- Background Colors -->
             <Color x:Key="FileExplorerBackgroundColor">#1E1E1E</Color>
             <Color x:Key="FileExplorerAlternateRowColor">#1E1E1E</Color>
-            <Color x:Key="FileExplorerSidebarBackgroundColor">#181818</Color>
+            <Color x:Key="FileExplorerSidebarBackgroundColor">#1E1E1E</Color>
             <Color x:Key="FileExplorerTitleBarBackgroundColor">#1C1C1C</Color>
             
             <!-- Border Colors -->
@@ -61,9 +61,9 @@
             <Color x:Key="FileExplorerButtonPressedColor">#3A3A3A</Color>
             
             <!-- Sidebar Item Hover Colors -->
-            <Color x:Key="FileExplorerSidebarItemHoverColor">#2D2D2D</Color>
+            <Color x:Key="FileExplorerSidebarItemHoverColor">#2B2B2B</Color>
             <Color x:Key="FileExplorerSidebarItemPressedColor">#3A3A3A</Color>
-            <Color x:Key="FileExplorerSidebarItemSelectedColor">#2D2D2D</Color>
+            <Color x:Key="FileExplorerSidebarItemSelectedColor">#2B2B2B</Color>
         </ResourceDictionary>
 
         <ResourceDictionary x:Key="HighContrast">
@@ -276,4 +276,62 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- GridViewItem Style for Icon/Tiles/Content Views -->
+    <Style x:Key="FileExplorerGridViewItemStyle" TargetType="GridViewItem">
+        <Setter Property="Margin" Value="2" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GridViewItem">
+                    <Grid x:Name="ContentBorder"
+                          Background="{TemplateBinding Background}"
+                          BorderBrush="{TemplateBinding BorderBrush}"
+                          BorderThickness="{TemplateBinding BorderThickness}"
+                          CornerRadius="4">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal" />
+                                <VisualState x:Name="PointerOver">
+                                    <VisualState.Setters>
+                                        <Setter Target="ContentBorder.Background" Value="{ThemeResource FileExplorerRowPointerOverBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <VisualState.Setters>
+                                        <Setter Target="ContentBorder.Background" Value="{ThemeResource FileExplorerRowPressedBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Selected">
+                                    <VisualState.Setters>
+                                        <Setter Target="ContentBorder.Background" Value="{ThemeResource FileExplorerRowSelectedBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="SelectedPointerOver">
+                                    <VisualState.Setters>
+                                        <Setter Target="ContentBorder.Background" Value="{ThemeResource FileExplorerRowSelectedPointerOverBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="SelectedPressed">
+                                    <VisualState.Setters>
+                                        <Setter Target="ContentBorder.Background" Value="{ThemeResource FileExplorerRowSelectedPressedBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                        <ContentPresenter
+                            x:Name="ContentPresenter"
+                            Margin="{TemplateBinding Padding}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            ContentTransitions="{TemplateBinding ContentTransitions}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>
+

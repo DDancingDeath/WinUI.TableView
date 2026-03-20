@@ -23,6 +23,46 @@
                 <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
             </StackPanel>
         </DataTemplate>
+        
+        <!-- Freezing row details demo during horizonatal scolling--> 
+        <DataTemplate x:Key="ProductDetailsTemplate">
+            <Border Background="{ThemeResource LayerFillColorDefaultBrush}" 
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="16"
+                    Margin="8">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Product Details" FontWeight="SemiBold" FontSize="14" />
+                    <Grid ColumnSpacing="16" RowSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Full Name:" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Price:" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="$" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Price}" FontWeight="SemiBold" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Stock Level:" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding Stock}" FontWeight="SemiBold" />
+                            <TextBlock Text="units available" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
     </Page.Resources>
 
     <Page.Content>
@@ -120,27 +160,45 @@
                     </Grid>
                 </TabViewItem>
                 
-                <!-- Tab for testing frozen colum demo by adding frozenColumnCount property and horizontally scrolling-->
-                <TabViewItem Header="Frozen Columns Demo">
+                <!-- Tab for testing frozen column demo + row details frozen feature -->
+                <TabViewItem Header="Frozen Columns + Row Details">
                     <Grid Padding="8">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
                         <StackPanel Orientation="Horizontal" Spacing="12" Padding="8">
-                            <TextBlock Text="Frozen Columns Demo:" VerticalAlignment="Center" FontWeight="SemiBold" />
-                            <TextBlock Text="The first 2 columns (Product &amp; Category) stay fixed while scrolling horizontally" 
+                            <TextBlock Text="Frozen Columns + Row Details Demo:" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <TextBlock Text="First 2 columns frozen. Click chevron to expand row details." 
                                        VerticalAlignment="Center" 
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
 
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="16" Padding="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Margin="8,0">
+                            <ToggleSwitch x:Name="FreezeRowDetailsToggle" 
+                                          Header="Freeze Row Details"
+                                          IsOn="False"
+                                          OnContent="Details stay fixed"
+                                          OffContent="Details scroll with columns" />
+                            <TextBlock VerticalAlignment="Center" 
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="400">
+                                <Run Text="Toggle to see the difference: When ON, row details stay in a fixed position. When OFF, they scroll horizontally with the columns." />
+                            </TextBlock>
+                        </StackPanel>
+
                         <tableView:TableView
-                            Grid.Row="1"
+                            Grid.Row="2"
                             AutoGenerateColumns="False"
                             ItemsSource="{x:Bind ProductRows}"
                             AlternateRowBackground="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             FrozenColumnCount="2"
+                            RowDetailsVisibilityMode="VisibleWhenExpanded"
+                            RowDetailsTemplate="{StaticResource ProductDetailsTemplate}"
+                            AreRowDetailsFrozen="{x:Bind FreezeRowDetailsToggle.IsOn, Mode=OneWay}"
                             SelectionMode="Single">
                             <tableView:TableView.Columns>
                                 <tableView:TableViewTextColumn Header="Product" Binding="{Binding Name}" MinWidth="200" />

@@ -23,6 +23,8 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
     private double _startX;
     private double _startWidth;
     private ViewMode _currentViewMode;
+    private SortProperty _currentSortProperty;
+    private SortOrder _currentSortOrder;
 
     /// <summary>
     /// Initializes the new instance of the MainPage class.
@@ -39,6 +41,8 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         _statusMessage = string.Empty;
         _selectionText = string.Empty;
         _currentViewMode = ViewMode.Details;
+        _currentSortProperty = SortProperty.Name;
+        _currentSortOrder = SortOrder.Ascending;
 
         FileItems = new ObservableCollection<FileSystemItem>();
         Locations = new ObservableCollection<LocationItem>(_fileSystemService.GetCommonLocations());
@@ -184,6 +188,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             }
 
             CurrentPath = path;
+            ApplySorting();
             UpdateStatusBar();
             
             BackButton.IsEnabled = _navigationHistory.Count > 0;
@@ -588,7 +593,76 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             SelectionText = $"{selectedCount} items selected ({sizeDisplay})";
         }
     }
+
+    private void SortButton_Click(object sender, RoutedEventArgs e)
+    {
+        SortMenuFlyout.ShowAt(SortButton);
+    }
+
+    private void SortPropertyMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem menuItem && menuItem.Tag is string sortPropertyString)
+        {
+            if (Enum.TryParse<SortProperty>(sortPropertyString, out var sortProperty))
+            {
+                _currentSortProperty = sortProperty;
+                ApplySorting();
+            }
+        }
+    }
+
+    private void SortOrderMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem menuItem && menuItem.Tag is string sortOrderString)
+        {
+            if (Enum.TryParse<SortOrder>(sortOrderString, out var sortOrder))
+            {
+                _currentSortOrder = sortOrder;
+                
+                // Update bullet visibility (radio button behavior)
+                AscendingBullet.Visibility = sortOrder == SortOrder.Ascending ? Visibility.Visible : Visibility.Collapsed;
+                DescendingBullet.Visibility = sortOrder == SortOrder.Descending ? Visibility.Visible : Visibility.Collapsed;
+                
+                ApplySorting();
+            }
+        }
+    }
+
+    private void ApplySorting()
+    {
+        if (FileItems.Count == 0)
+            return;
+
+        var sortedItems = _currentSortProperty switch
+        {
+            SortProperty.Name => _currentSortOrder == SortOrder.Ascending
+                ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.Name, StringComparer.OrdinalIgnoreCase),
+            
+            SortProperty.DateModified => _currentSortOrder == SortOrder.Ascending
+                ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.DateModified)
+                : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.DateModified),
+            
+            SortProperty.Type => _currentSortOrder == SortOrder.Ascending
+                ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Type, StringComparer.OrdinalIgnoreCase)
+                : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.Type, StringComparer.OrdinalIgnoreCase),
+            
+            SortProperty.Size => _currentSortOrder == SortOrder.Ascending
+                ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Size)
+                : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.Size),
+            
+            _ => FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+        };
+
+        var tempList = sortedItems.ToList();
+        FileItems.Clear();
+        foreach (var item in tempList)
+        {
+            FileItems.Add(item);
+        }
+    }
 }
+
 
 
 

@@ -244,6 +244,57 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                 </MenuFlyoutItem.Icon>
             </MenuFlyoutItem>
         </MenuFlyout>
+
+        <!-- Menu Flyout for Sort Options -->
+        <MenuFlyout x:Key="SortMenuFlyout" x:Name="SortMenuFlyout">
+            <!-- Sort by properties -->
+            <MenuFlyoutItem Text="Name" Tag="Name" Click="SortPropertyMenuItem_Click">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xE8D4;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            <MenuFlyoutItem Text="Date modified" Tag="DateModified" Click="SortPropertyMenuItem_Click">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xEC92;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            <MenuFlyoutItem Text="Type" Tag="Type" Click="SortPropertyMenuItem_Click">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xE7C3;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            <MenuFlyoutItem Text="Size" Tag="Size" Click="SortPropertyMenuItem_Click">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xE2B4;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            
+            <MenuFlyoutSeparator />
+            
+            <!-- Sort order with solid bullet indicator -->
+            <MenuFlyoutItem x:Name="AscendingMenuItem"
+                           Text="Ascending" 
+                           Tag="Ascending" 
+                           Click="SortOrderMenuItem_Click">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon x:Name="AscendingBullet" 
+                             Glyph="&#xE915;" 
+                             FontSize="8"
+                             Visibility="Visible" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            <MenuFlyoutItem x:Name="DescendingMenuItem"
+                           Text="Descending" 
+                           Tag="Descending" 
+                           Click="SortOrderMenuItem_Click">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon x:Name="DescendingBullet" 
+                             Glyph="&#xE915;" 
+                             FontSize="8"
+                             Visibility="Collapsed" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+        </MenuFlyout>
     </Page.Resources>
 
     <Grid>
@@ -476,7 +527,9 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
 
                 <Button x:Name="SortButton"
                         Style="{StaticResource SubtleButtonStyle}"
-                        ToolTipService.ToolTip="Sort">
+                        ToolTipService.ToolTip="Sort"
+                        Click="SortButton_Click"
+                        Flyout="{StaticResource SortMenuFlyout}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE8CB;" FontSize="16" />
                         <TextBlock Text="Sort" />

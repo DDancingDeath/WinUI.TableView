@@ -251,6 +251,20 @@
                                        Width="1"
                                        HorizontalAlignment="Right"
                                        VerticalAlignment="Stretch" />
+
+                            <!-- Column Resize Gripper -->
+                            <Border x:Name="ResizerGripper"
+                                    Grid.Column="1"
+                                    Width="8"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Stretch"
+                                    Background="Transparent">
+                                <Rectangle Width="1"
+                                           Fill="{ThemeResource TableViewHeaderForeground}"
+                                           Opacity="0.3"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Stretch" />
+                            </Border>
                         </Grid>
                     </Grid>
                 </ControlTemplate>

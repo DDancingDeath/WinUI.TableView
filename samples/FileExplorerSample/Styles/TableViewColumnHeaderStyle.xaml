@@ -22,7 +22,7 @@ mc:Ignorable="not_win">
         <Setter Property="BackgroundSizing"
                 Value="InnerBorderEdge" />
         <Setter Property="Foreground"
-                Value="{ThemeResource TableViewHeaderForeground}" />
+                Value="{ThemeResource FileExplorerHeaderTextBrush}" />
         <Setter Property="Padding"
                 Value="12,0" />
         <Setter Property="UseSystemFocusVisuals"
@@ -192,6 +192,7 @@ mc:Ignorable="not_win">
                             <Rectangle x:Name="VerticalGridLine"
                                        Grid.Column="1"
                                        Width="1"
+                                       Fill="#E0E0E0"
                                        HorizontalAlignment="Right"
                                        VerticalAlignment="Stretch" />
                         </Grid>

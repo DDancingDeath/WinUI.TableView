@@ -19,12 +19,13 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
             <SolidColorBrush x:Key="TableViewCellBackgroundPointerOver" Color="Transparent" />
             <SolidColorBrush x:Key="TableViewCellBackgroundSelected" Color="Transparent" />
             
-            <!-- Override header styling - transparent/white background -->
+            <!-- Override header styling - transparent/white background with gray text -->
             <SolidColorBrush x:Key="TableViewHeaderRowBackground" Color="Transparent" />
             <SolidColorBrush x:Key="TableViewHeaderBackgroundPointerOver" Color="#E6F3FF" />
             <SolidColorBrush x:Key="TableViewHeaderBackgroundPressed" Color="#CCE8FF" />
+            <SolidColorBrush x:Key="TableViewHeaderForeground" Color="#605E5C" />
             
-            <!-- Remove grid lines and borders -->
+            <!-- Remove grid lines but show vertical separator in headers -->
             <SolidColorBrush x:Key="TableViewBorderBrush" Color="Transparent" />
             <SolidColorBrush x:Key="TableViewHorizontalGridLineStroke" Color="Transparent" />
             <SolidColorBrush x:Key="TableViewVerticalGridLineStroke" Color="Transparent" />
@@ -44,6 +45,30 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                           TextTrimming="CharacterEllipsis"
                           VerticalAlignment="Center" />
             </StackPanel>
+        </DataTemplate>
+
+        <!-- Template for Date Modified column with subtle text -->
+        <DataTemplate x:Key="DateModifiedColumnTemplate">
+            <TextBlock Text="{Binding DateModifiedDisplay}" 
+                      Foreground="{ThemeResource FileExplorerSubtleTextBrush}"
+                      TextTrimming="CharacterEllipsis"
+                      VerticalAlignment="Center" />
+        </DataTemplate>
+
+        <!-- Template for Type column with subtle text -->
+        <DataTemplate x:Key="TypeColumnTemplate">
+            <TextBlock Text="{Binding Type}" 
+                      Foreground="{ThemeResource FileExplorerSubtleTextBrush}"
+                      TextTrimming="CharacterEllipsis"
+                      VerticalAlignment="Center" />
+        </DataTemplate>
+
+        <!-- Template for Size column with subtle text -->
+        <DataTemplate x:Key="SizeColumnTemplate">
+            <TextBlock Text="{Binding SizeDisplay}" 
+                      Foreground="{ThemeResource FileExplorerSubtleTextBrush}"
+                      TextTrimming="CharacterEllipsis"
+                      VerticalAlignment="Center" />
         </DataTemplate>
 
         <!-- Small Icon View Template -->
@@ -586,28 +611,28 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                                                           CellTemplate="{StaticResource NameColumnTemplate}" />
 
                         <!-- Date Modified Column -->
-                        <tableView:TableViewTextColumn Header="Date modified"
-                                                      Width="180"
-                                                      Binding="{Binding DateModifiedDisplay}"
-                                                      CanSort="True"
-                                                      Tag="DateModified"
-                                                      HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}" />
+                        <tableView:TableViewTemplateColumn Header="Date modified"
+                                                          Width="180"
+                                                          CanSort="True"
+                                                          Tag="DateModified"
+                                                          HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}"
+                                                          CellTemplate="{StaticResource DateModifiedColumnTemplate}" />
 
                         <!-- Type Column -->
-                        <tableView:TableViewTextColumn Header="Type"
-                                                      Width="200"
-                                                      Binding="{Binding Type}"
-                                                      CanSort="True"
-                                                      Tag="Type"
-                                                      HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}" />
+                        <tableView:TableViewTemplateColumn Header="Type"
+                                                          Width="200"
+                                                          CanSort="True"
+                                                          Tag="Type"
+                                                          HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}"
+                                                          CellTemplate="{StaticResource TypeColumnTemplate}" />
 
                         <!-- Size Column -->
-                        <tableView:TableViewTextColumn Header="Size"
-                                                      Width="120"
-                                                      Binding="{Binding SizeDisplay}"
-                                                      CanSort="True"
-                                                      Tag="Size"
-                                                      HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}" />
+                        <tableView:TableViewTemplateColumn Header="Size"
+                                                          Width="120"
+                                                          CanSort="True"
+                                                          Tag="Size"
+                                                          HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}"
+                                                          CellTemplate="{StaticResource SizeColumnTemplate}" />
                     </tableView:TableView.Columns>
                 </tableView:TableView>
 

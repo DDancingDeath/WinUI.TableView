@@ -29,6 +29,7 @@ xmlns:tableView="using:WinUI.TableView">
             <!-- Text Colors -->
             <Color x:Key="FileExplorerTextColor">#000000</Color>
             <Color x:Key="FileExplorerSubtleTextColor">#605E5C</Color>
+            <Color x:Key="FileExplorerHeaderTextColor">#242424</Color>
             
             <!-- Button Hover Colors -->
             <Color x:Key="FileExplorerButtonHoverColor">#E6E6E6</Color>
@@ -60,6 +61,7 @@ xmlns:tableView="using:WinUI.TableView">
             <!-- Text Colors -->
             <Color x:Key="FileExplorerTextColor">#FFFFFF</Color>
             <Color x:Key="FileExplorerSubtleTextColor">#B0B0B0</Color>
+            <Color x:Key="FileExplorerHeaderTextColor">#FFFFFF</Color>
             
             <!-- Button Hover Colors -->
             <Color x:Key="FileExplorerButtonHoverColor">#2D2D2D</Color>
@@ -118,6 +120,7 @@ xmlns:tableView="using:WinUI.TableView">
     
     <SolidColorBrush x:Key="FileExplorerTextBrush" Color="{ThemeResource FileExplorerTextColor}" />
     <SolidColorBrush x:Key="FileExplorerSubtleTextBrush" Color="{ThemeResource FileExplorerSubtleTextColor}" />
+    <SolidColorBrush x:Key="FileExplorerHeaderTextBrush" Color="{ThemeResource FileExplorerHeaderTextColor}" />
     
     <SolidColorBrush x:Key="FileExplorerButtonHoverBrush" Color="{ThemeResource FileExplorerButtonHoverColor}" />
     <SolidColorBrush x:Key="FileExplorerButtonPressedBrush" Color="{ThemeResource FileExplorerButtonPressedColor}" />

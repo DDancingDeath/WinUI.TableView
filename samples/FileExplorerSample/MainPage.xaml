@@ -10,11 +10,23 @@ mc:Ignorable="d"
 Background="{ThemeResource FileExplorerBackgroundBrush}">
 
     <Page.Resources>
-        <!-- Override cell backgrounds to be transparent (we'll use row-level styling instead) -->
-        <SolidColorBrush x:Key="TableViewCellBackgroundPointerOver" Color="Transparent" />
-        <SolidColorBrush x:Key="TableViewCellBackgroundSelected" Color="Transparent" />
-        
-        <!-- Custom template for Name column with icon -->
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ms-appx:///Styles/TableViewColumnHeaderStyle.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Override cell backgrounds to be transparent (we'll use row-level styling instead) -->
+            <SolidColorBrush x:Key="TableViewCellBackgroundPointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="TableViewCellBackgroundSelected" Color="Transparent" />
+            
+            <!-- Override OptionsButtonIcon to use ChevronDown arrow instead of three dots -->
+            <x:String x:Key="OptionsButtonIcon">&#xE70D;</x:String>
+            
+            <!-- Override the filter dropdown dimensions for larger File Explorer-style filter -->
+            <x:Double x:Key="FileExplorerFilterDropdownWidth">350</x:Double>
+            <x:Double x:Key="FileExplorerFilterDropdownHeight">400</x:Double>
+            
+            <!-- Custom template for Name column with icon -->
         <DataTemplate x:Key="NameColumnTemplate">
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <FontIcon Glyph="{Binding IconGlyph}" FontSize="16" />
@@ -295,6 +307,7 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                 </MenuFlyoutItem.Icon>
             </MenuFlyoutItem>
         </MenuFlyout>
+        </ResourceDictionary>
     </Page.Resources>
 
     <Grid>
@@ -559,6 +572,7 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                                                           Width="300"
                                                           CanSort="True"
                                                           Tag="Name"
+                                                          HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}"
                                                           CellTemplate="{StaticResource NameColumnTemplate}" />
 
                         <!-- Date Modified Column -->
@@ -566,21 +580,24 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                                                       Width="180"
                                                       Binding="{Binding DateModifiedDisplay}"
                                                       CanSort="True"
-                                                      Tag="DateModified" />
+                                                      Tag="DateModified"
+                                                      HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}" />
 
                         <!-- Type Column -->
                         <tableView:TableViewTextColumn Header="Type"
                                                       Width="200"
                                                       Binding="{Binding Type}"
                                                       CanSort="True"
-                                                      Tag="Type" />
+                                                      Tag="Type"
+                                                      HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}" />
 
                         <!-- Size Column -->
                         <tableView:TableViewTextColumn Header="Size"
                                                       Width="120"
                                                       Binding="{Binding SizeDisplay}"
                                                       CanSort="True"
-                                                      Tag="Size" />
+                                                      Tag="Size"
+                                                      HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}" />
                     </tableView:TableView.Columns>
                 </tableView:TableView>
 

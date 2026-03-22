@@ -168,6 +168,22 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
     private void MainPage_Loaded(object sender, RoutedEventArgs e)
     {
         LoadDirectory(CurrentPath);
+        SetupFiltering();
+    }
+
+    /// <summary>
+    /// Sets up filtering for columns.
+    /// </summary>
+    private void SetupFiltering()
+    {
+        // Set custom filter handler for File Explorer-style alphabetic range filtering
+        DetailsTableView.FilterHandler = new FileExplorerColumnFilterHandler(DetailsTableView);
+
+        // Enable filtering for all columns
+        foreach (var column in DetailsTableView.Columns)
+        {
+            column.CanFilter = true;
+        }
     }
 
     /// <summary>

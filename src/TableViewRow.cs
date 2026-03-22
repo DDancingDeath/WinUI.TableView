@@ -220,7 +220,7 @@ public partial class TableViewRow : ListViewItem
     }
 
     /// <inheritdoc/>
-    protected override void OnDoubleTapped(DoubleTappedRoutedEventArgs e)
+    protected override async void OnDoubleTapped(DoubleTappedRoutedEventArgs e)
     {
         if (TableView?.IsGroupHeaderItem(Content) is true)
         {
@@ -231,6 +231,25 @@ public partial class TableViewRow : ListViewItem
         var eventArgs = new TableViewRowDoubleTappedEventArgs(Index, this, Content);
         TableView?.OnRowDoubleTapped(eventArgs);
         e.Handled = eventArgs.Handled;
+
+        if (e.Handled)
+        {
+            return;
+        }
+
+        // When SelectionUnit is Row, the cell's OnDoubleTapped never fires because
+        // ListViewItem consumes the pointer events for row selection. Forward the
+        // double-tap to the target cell so editing can still be initiated.
+        if (TableView?.SelectionUnit is TableViewSelectionUnit.Row
+            && e.OriginalSource is DependencyObject source
+            && source.FindAscendant<TableViewCell>() is { IsReadOnly: false } cell
+            && !TableView.IsEditing
+            && cell.Column?.UseSingleElement is not true)
+        {
+            TableView.MakeSelection(cell.Slot, false);
+            e.Handled = await cell.BeginCellEditing(e);
+            return;
+        }
 
         base.OnDoubleTapped(e);
     }

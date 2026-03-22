@@ -327,7 +327,8 @@ public partial class TableViewCell : ContentControl
 
         if ((TableView?.SelectionMode is not ListViewSelectionMode.None
            && TableView?.SelectionUnit is not TableViewSelectionUnit.Row)
-           || !TableView.IsReadOnly)
+           || !TableView.IsReadOnly
+           || (TableView?.SelectionUnit is TableViewSelectionUnit.Row && !IsReadOnly))
         {
             VisualStates.GoToState(this, false, VisualStates.StatePointerOver);
         }
@@ -340,7 +341,8 @@ public partial class TableViewCell : ContentControl
 
         if ((TableView?.SelectionMode is not ListViewSelectionMode.None
             && TableView?.SelectionUnit is not TableViewSelectionUnit.Row)
-            || !TableView.IsReadOnly)
+            || !TableView.IsReadOnly
+            || (TableView?.SelectionUnit is TableViewSelectionUnit.Row && !IsReadOnly))
         {
             VisualStates.GoToState(this, false, VisualStates.StateNormal);
         }

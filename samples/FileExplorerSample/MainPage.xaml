@@ -341,6 +341,40 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                              Visibility="Collapsed" />
                 </MenuFlyoutItem.Icon>
             </MenuFlyoutItem>
+
+            <MenuFlyoutSeparator />
+            
+            <!-- Group by submenu -->
+            <MenuFlyoutSubItem Text="Group by">
+                <MenuFlyoutSubItem.Icon>
+                    <FontIcon Glyph="&#xE8EF;" />
+                </MenuFlyoutSubItem.Icon>
+                <MenuFlyoutItem Text="(None)" Tag="None" Click="GroupPropertyMenuItem_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE894;" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Name" Tag="Name" Click="GroupPropertyMenuItem_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE8D4;" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Date modified" Tag="DateModified" Click="GroupPropertyMenuItem_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xEC92;" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Type" Tag="Type" Click="GroupPropertyMenuItem_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE7C3;" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Size" Tag="Size" Click="GroupPropertyMenuItem_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE2B4;" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+            </MenuFlyoutSubItem>
         </MenuFlyout>
         </ResourceDictionary>
     </Page.Resources>
@@ -594,7 +628,9 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                                     SelectionMode="Extended"
                                     ShowExportOptions="True"
                                     CornerButtonMode="Options"
-                                    ShowGroupHeaders="False"
+                                    ShowGroupHeaders="True"
+                                    ShowGroupItemCount="False"
+                                    GroupSortDirection="Ascending"
                                     Background="{ThemeResource FileExplorerBackgroundBrush}"
                                     GridLinesVisibility="None"
                                     ItemContainerStyle="{StaticResource FileExplorerListViewItemStyle}"
@@ -605,7 +641,7 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                         <!-- Name Column with Icon -->
                         <tableView:TableViewTemplateColumn Header="Name" 
                                                           Width="300"
-                                                          CanSort="True"
+                                                          CanSort="False"
                                                           Tag="Name"
                                                           HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}"
                                                           CellTemplate="{StaticResource NameColumnTemplate}" />
@@ -613,7 +649,7 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                         <!-- Date Modified Column -->
                         <tableView:TableViewTemplateColumn Header="Date modified"
                                                           Width="180"
-                                                          CanSort="True"
+                                                          CanSort="False"
                                                           Tag="DateModified"
                                                           HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}"
                                                           CellTemplate="{StaticResource DateModifiedColumnTemplate}" />
@@ -621,7 +657,7 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                         <!-- Type Column -->
                         <tableView:TableViewTemplateColumn Header="Type"
                                                           Width="200"
-                                                          CanSort="True"
+                                                          CanSort="False"
                                                           Tag="Type"
                                                           HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}"
                                                           CellTemplate="{StaticResource TypeColumnTemplate}" />
@@ -629,7 +665,7 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                         <!-- Size Column -->
                         <tableView:TableViewTemplateColumn Header="Size"
                                                           Width="120"
-                                                          CanSort="True"
+                                                          CanSort="False"
                                                           Tag="Size"
                                                           HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}"
                                                           CellTemplate="{StaticResource SizeColumnTemplate}" />

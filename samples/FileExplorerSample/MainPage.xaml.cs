@@ -25,6 +25,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
     private ViewMode _currentViewMode;
     private SortProperty _currentSortProperty;
     private SortOrder _currentSortOrder;
+    private GroupProperty _currentGroupProperty;
 
     /// <summary>
     /// Initializes the new instance of the MainPage class.
@@ -43,6 +44,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         _currentViewMode = ViewMode.Details;
         _currentSortProperty = SortProperty.Name;
         _currentSortOrder = SortOrder.Ascending;
+        _currentGroupProperty = GroupProperty.None;
 
         FileItems = new ObservableCollection<FileSystemItem>();
         Locations = new ObservableCollection<LocationItem>(_fileSystemService.GetCommonLocations());
@@ -190,16 +192,22 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
     /// Loads the contents of the specified directory.
     /// </summary>
     /// <param name="path">The path to load.</param>
-    /// <param name="enableGrouping">Whether to enable grouping by type.</param>
-    private void LoadDirectory(string path, bool enableGrouping = false)
+    private void LoadDirectory(string path)
     {
         try
         {
+            var enableGrouping = _currentGroupProperty != GroupProperty.None;
             var items = _fileSystemService.GetItems(path, enableGrouping);
             
             FileItems.Clear();
             foreach (var item in items)
             {
+                // Apply grouping label based on the current group property
+                if (_currentGroupProperty != GroupProperty.None)
+                {
+                    item.GroupLabel = GetGroupLabel(item, _currentGroupProperty);
+                }
+                
                 FileItems.Add(item);
             }
 
@@ -238,7 +246,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
     {
         var folderCount = FileItems.Count(x => x.IsFolder);
         var fileCount = FileItems.Count(x => !x.IsFolder);
-        StatusMessage = $"{fileCount} item(s) · {folderCount} folder(s)";
+        StatusMessage = $"{fileCount} item(s) ï¿½ {folderCount} folder(s)";
     }
 
     private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -649,33 +657,201 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         if (FileItems.Count == 0)
             return;
 
-        var sortedItems = _currentSortProperty switch
+        // If grouping is enabled, use TableView's SortDescriptions for sorting within groups
+        if (_currentGroupProperty != GroupProperty.None)
         {
-            SortProperty.Name => _currentSortOrder == SortOrder.Ascending
-                ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.Name, StringComparer.OrdinalIgnoreCase),
+            // Clear existing sort descriptions
+            DetailsTableView.SortDescriptions.Clear();
             
-            SortProperty.DateModified => _currentSortOrder == SortOrder.Ascending
-                ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.DateModified)
-                : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.DateModified),
+            // Add sort description based on current sort property
+            var sortDirection = _currentSortOrder == SortOrder.Ascending 
+                ? WinUI.TableView.SortDirection.Ascending 
+                : WinUI.TableView.SortDirection.Descending;
             
-            SortProperty.Type => _currentSortOrder == SortOrder.Ascending
-                ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Type, StringComparer.OrdinalIgnoreCase)
-                : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.Type, StringComparer.OrdinalIgnoreCase),
+            // First, sort folders before files (Descending means true/folders come before false/files)
+            DetailsTableView.SortDescriptions.Add(
+                new WinUI.TableView.SortDescription(nameof(FileSystemItem.IsFolder), WinUI.TableView.SortDirection.Descending));
             
-            SortProperty.Size => _currentSortOrder == SortOrder.Ascending
-                ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Size)
-                : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.Size),
+            // Then sort by the selected property
+            var propertyName = _currentSortProperty switch
+            {
+                SortProperty.Name => nameof(FileSystemItem.Name),
+                SortProperty.DateModified => nameof(FileSystemItem.DateModified),
+                SortProperty.Type => nameof(FileSystemItem.Type),
+                SortProperty.Size => nameof(FileSystemItem.Size),
+                _ => nameof(FileSystemItem.Name)
+            };
             
-            _ => FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-        };
-
-        var tempList = sortedItems.ToList();
-        FileItems.Clear();
-        foreach (var item in tempList)
-        {
-            FileItems.Add(item);
+            // Use case-insensitive comparer for string properties (Name and Type)
+            System.Collections.IComparer? comparer = (_currentSortProperty == SortProperty.Name || _currentSortProperty == SortProperty.Type) 
+                ? StringComparer.OrdinalIgnoreCase 
+                : null;
+            
+            DetailsTableView.SortDescriptions.Add(
+                new WinUI.TableView.SortDescription(propertyName, sortDirection, comparer));
         }
+        else
+        {
+            // When not grouping, manually sort the collection as before
+            var sortedItems = _currentSortProperty switch
+            {
+                SortProperty.Name => _currentSortOrder == SortOrder.Ascending
+                    ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                    : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.Name, StringComparer.OrdinalIgnoreCase),
+                
+                SortProperty.DateModified => _currentSortOrder == SortOrder.Ascending
+                    ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.DateModified)
+                    : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.DateModified),
+                
+                SortProperty.Type => _currentSortOrder == SortOrder.Ascending
+                    ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Type, StringComparer.OrdinalIgnoreCase)
+                    : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.Type, StringComparer.OrdinalIgnoreCase),
+                
+                SortProperty.Size => _currentSortOrder == SortOrder.Ascending
+                    ? FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Size)
+                    : FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenByDescending(x => x.Size),
+                
+                _ => FileItems.OrderBy(x => x.IsFolder ? 0 : 1).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            };
+
+            var tempList = sortedItems.ToList();
+            FileItems.Clear();
+            foreach (var item in tempList)
+            {
+                FileItems.Add(item);
+            }
+        }
+    }
+
+    private void GroupPropertyMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem menuItem && menuItem.Tag is string groupPropertyString)
+        {
+            if (Enum.TryParse<GroupProperty>(groupPropertyString, out var groupProperty))
+            {
+                _currentGroupProperty = groupProperty;
+                
+                // Enable/disable grouping on TableView
+                if (groupProperty == GroupProperty.None)
+                {
+                    DetailsTableView.GroupByPath = null;
+                }
+                else
+                {
+                    DetailsTableView.GroupByPath = "GroupLabel";
+                }
+                
+                LoadDirectory(CurrentPath);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the group label for a file system item based on the grouping property.
+    /// </summary>
+    /// <param name="item">The file system item.</param>
+    /// <param name="groupProperty">The property to group by.</param>
+    /// <returns>A group label string.</returns>
+    private string GetGroupLabel(FileSystemItem item, GroupProperty groupProperty)
+    {
+        return groupProperty switch
+        {
+            GroupProperty.Name => GetNameGroupLabel(item.Name),
+            GroupProperty.Type => item.IsFolder ? "Folders" : item.GroupLabel ?? "Other Files",
+            GroupProperty.DateModified => GetDateModifiedGroupLabel(item.DateModified),
+            GroupProperty.Size => GetSizeGroupLabel(item.Size, item.IsFolder),
+            _ => string.Empty
+        };
+    }
+
+    /// <summary>
+    /// Gets the group label based on the first letter of the name.
+    /// </summary>
+    /// <param name="name">The item name.</param>
+    /// <returns>A group label based on alphabetical ranges.</returns>
+    private string GetNameGroupLabel(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return "\uFFFF\uFFFF\uFFFFOther"; // High Unicode chars to sort last
+
+        var firstChar = char.ToUpperInvariant(name[0]);
+        
+        if (char.IsDigit(firstChar))
+            return "0-9";
+        
+        if (firstChar >= 'A' && firstChar <= 'H')
+            return "A - H";
+        
+        if (firstChar >= 'I' && firstChar <= 'P')
+            return "I - P";
+        
+        if (firstChar >= 'Q' && firstChar <= 'Z')
+            return "Q - Z";
+        
+        return "\uFFFF\uFFFF\uFFFFOther"; // High Unicode chars to sort last
+    }
+
+    /// <summary>
+    /// Gets the group label based on the date modified.
+    /// </summary>
+    /// <param name="dateModified">The date modified.</param>
+    /// <returns>A group label based on time ranges.</returns>
+    private string GetDateModifiedGroupLabel(DateTime dateModified)
+    {
+        var now = DateTime.Now;
+        var daysDiff = (now - dateModified).Days;
+
+        if (dateModified.Date == now.Date)
+            return "Today";
+        
+        if (dateModified.Date == now.Date.AddDays(-1))
+            return "\u200BYesterday"; // 1 zero-width space
+        
+        if (daysDiff < 7)
+            return "\u200B\u200BEarlier this week"; // 2 zero-width spaces
+        
+        if (daysDiff < 14)
+            return "\u200B\u200B\u200BLast week"; // 3 zero-width spaces
+        
+        if (daysDiff < 30)
+            return "\u200B\u200B\u200B\u200BEarlier this month"; // 4 zero-width spaces
+        
+        if (daysDiff < 60)
+            return "\u200B\u200B\u200B\u200B\u200BLast month"; // 5 zero-width spaces
+        
+        if (dateModified.Year == now.Year)
+            return "\u200B\u200B\u200B\u200B\u200B\u200BEarlier this year"; // 6 zero-width spaces
+        
+        return "\u200B\u200B\u200B\u200B\u200B\u200B\u200BA long time ago"; // 7 zero-width spaces - sorts last
+    }
+
+    /// <summary>
+    /// Gets the group label based on the size.
+    /// </summary>
+    /// <param name="size">The size in bytes.</param>
+    /// <param name="isFolder">Whether the item is a folder.</param>
+    /// <returns>A group label based on size ranges.</returns>
+    private string GetSizeGroupLabel(long size, bool isFolder)
+    {
+        if (isFolder)
+            return "Folders";
+
+        if (size == 0)
+            return "Empty (0 KB)";
+        
+        if (size < 1024 * 16)
+            return "Tiny (0 - 16 KB)";
+        
+        if (size < 1024 * 1024)
+            return "Small (16 KB - 1 MB)";
+        
+        if (size < 1024 * 1024 * 128)
+            return "Medium (1 - 128 MB)";
+        
+        if (size < 1024L * 1024 * 1024)
+            return "Large (128 MB - 1 GB)";
+        
+        return "Huge (> 1 GB)";
     }
 }
 

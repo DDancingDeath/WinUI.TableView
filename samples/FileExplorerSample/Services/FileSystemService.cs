@@ -56,7 +56,7 @@ public class FileSystemService
                         DateModified = file.LastWriteTime,
                         Path = file.FullName,
                         IsFolder = false,
-                        GroupLabel = enableGrouping ? GetGroupLabel(file.Extension) : null
+                        GroupLabel = enableGrouping ? GetFileGroupLabel(file.Extension) : null
                     });
                 }
                 catch
@@ -118,7 +118,7 @@ public class FileSystemService
     /// </summary>
     /// <param name="extension">The file extension.</param>
     /// <returns>A group label.</returns>
-    private string GetGroupLabel(string extension)
+    private string GetFileGroupLabel(string extension)
     {
         return extension.ToLowerInvariant() switch
         {

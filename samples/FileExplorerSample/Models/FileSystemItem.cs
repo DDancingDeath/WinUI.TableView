@@ -132,6 +132,11 @@ public class FileSystemItem : INotifyPropertyChanged
     public string? GroupLabel { get; set; }
 
     /// <summary>
+    /// Gets or sets the sort key for group ordering (used internally for sorting groups).
+    /// </summary>
+    public string? GroupSortKey { get; set; }
+
+    /// <summary>
     /// Gets the icon glyph for the item based on its type.
     /// </summary>
     public string IconGlyph

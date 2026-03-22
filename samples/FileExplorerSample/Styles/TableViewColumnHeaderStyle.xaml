@@ -50,6 +50,9 @@ mc:Ignorable="not_win">
             <Setter.Value>
                 <ControlTemplate TargetType="local:TableViewColumnHeader">
                     <Grid x:Name="rootGrid">
+                        <Grid.Background>
+                            <SolidColorBrush Color="Transparent" />
+                        </Grid.Background>
                         <VisualStateManager.VisualStateGroups>
                             <VisualStateGroup x:Name="CommonStates">
                                 <VisualState x:Name="Normal" />

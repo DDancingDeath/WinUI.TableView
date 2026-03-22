@@ -19,6 +19,16 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
             <SolidColorBrush x:Key="TableViewCellBackgroundPointerOver" Color="Transparent" />
             <SolidColorBrush x:Key="TableViewCellBackgroundSelected" Color="Transparent" />
             
+            <!-- Override header styling - transparent/white background -->
+            <SolidColorBrush x:Key="TableViewHeaderRowBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="TableViewHeaderBackgroundPointerOver" Color="#E6F3FF" />
+            <SolidColorBrush x:Key="TableViewHeaderBackgroundPressed" Color="#CCE8FF" />
+            
+            <!-- Remove grid lines and borders -->
+            <SolidColorBrush x:Key="TableViewBorderBrush" Color="Transparent" />
+            <SolidColorBrush x:Key="TableViewHorizontalGridLineStroke" Color="Transparent" />
+            <SolidColorBrush x:Key="TableViewVerticalGridLineStroke" Color="Transparent" />
+            
             <!-- Override OptionsButtonIcon to use ChevronDown arrow instead of three dots -->
             <x:String x:Key="OptionsButtonIcon">&#xE70D;</x:String>
             

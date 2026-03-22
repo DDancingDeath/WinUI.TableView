@@ -19,6 +19,10 @@ xmlns:tableView="using:WinUI.TableView">
             <Color x:Key="FileExplorerSidebarBackgroundColor">#FFFFFF</Color>
             <Color x:Key="FileExplorerTitleBarBackgroundColor">#F3F3F3</Color>
             
+            <!-- Header Colors (Light blue like File Explorer) -->
+            <Color x:Key="FileExplorerHeaderBackgroundColor">#F3F9FF</Color>
+            <Color x:Key="FileExplorerHeaderHoverColor">#E6F3FF</Color>
+            
             <!-- Border Colors -->
             <Color x:Key="FileExplorerBorderColor">#E0E0E0</Color>
             
@@ -105,6 +109,10 @@ xmlns:tableView="using:WinUI.TableView">
     <SolidColorBrush x:Key="FileExplorerAlternateRowBrush" Color="{ThemeResource FileExplorerAlternateRowColor}" />
     <SolidColorBrush x:Key="FileExplorerSidebarBackgroundBrush" Color="{ThemeResource FileExplorerSidebarBackgroundColor}" />
     <SolidColorBrush x:Key="FileExplorerTitleBarBackgroundBrush" Color="{ThemeResource FileExplorerTitleBarBackgroundColor}" />
+    
+    <!-- Header Brushes -->
+    <SolidColorBrush x:Key="FileExplorerHeaderBackgroundBrush" Color="{ThemeResource FileExplorerHeaderBackgroundColor}" />
+    <SolidColorBrush x:Key="FileExplorerHeaderHoverBrush" Color="{ThemeResource FileExplorerHeaderHoverColor}" />
     
     <SolidColorBrush x:Key="FileExplorerBorderBrush" Color="{ThemeResource FileExplorerBorderColor}" />
     

@@ -244,12 +244,13 @@ public partial class TableView : ListView
     {
         base.OnPointerPressed(e);
 
-        // Clear selection when clicking in empty area (not on any row)
+        // Clear selection when clicking in empty area (not on any row or header)
         if (e.OriginalSource is FrameworkElement element)
         {
-            // Check if the click is on the background or empty area (not on a row or cell)
+            // Check if the click is on the background or empty area (not on a row, cell, or header)
             var row = element.FindAscendant<TableViewRow>();
-            if (row is null && !e.Handled)
+            var header = element.FindAscendant<TableViewColumnHeader>();
+            if (row is null && header is null && !e.Handled)
             {
                 // Click was in empty area, clear selection
                 DeselectAll();

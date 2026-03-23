@@ -9,6 +9,111 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- Theme-aware color resources -->
+            <ResourceDictionary.ThemeDictionaries>
+            <ResourceDictionary x:Key="Light">
+                <SolidColorBrush x:Key="ChildRowBackgroundBrush" Color="#14000000" />
+                <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F3F3F3" />
+                
+                <!-- Light blue column backgrounds for CPU, Memory, Disk, Network -->
+                <SolidColorBrush x:Key="MetricColumnBackgroundBrush" Color="#D5EEFF" />
+                
+                <!-- Task Manager: no corner radius for seamless rows -->
+                <CornerRadius x:Key="TableViewRowCornerRadius">0</CornerRadius>
+                <CornerRadius x:Key="TableViewRowCellSelectionBorderCornerRadius">0</CornerRadius>
+                
+                <!-- Override WinUI default backgrounds for light theme -->
+                <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush" Color="#F3F3F3" />
+                <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush" Color="#FFFFFF" />
+                <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#0F000000" />
+                <SolidColorBrush x:Key="LayerFillColorDefaultBrush" Color="#B3FFFFFF" />
+                <SolidColorBrush x:Key="SubtleFillColorSecondaryBrush" Color="#0F000000" />
+                <SolidColorBrush x:Key="SubtleFillColorTertiaryBrush" Color="#0A000000" />
+            </ResourceDictionary>
+            <ResourceDictionary x:Key="Dark">
+                <SolidColorBrush x:Key="ChildRowBackgroundBrush" Color="#14FFFFFF" />
+                <SolidColorBrush x:Key="AppBackgroundBrush" Color="#202020" />
+                
+                <!-- Light blue column backgrounds for CPU, Memory, Disk, Network in dark mode -->
+                <SolidColorBrush x:Key="MetricColumnBackgroundBrush" Color="#1A3A4D" />
+                
+                <!-- Task Manager: no corner radius for seamless rows -->
+                <CornerRadius x:Key="TableViewRowCornerRadius">0</CornerRadius>
+                <CornerRadius x:Key="TableViewRowCellSelectionBorderCornerRadius">0</CornerRadius>
+                
+                <!-- Override WinUI default backgrounds for dark theme to match Task Manager -->
+                <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush" Color="#202020" />
+                <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush" Color="#2C2C2C" />
+                <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#1F1F1F" />
+                <SolidColorBrush x:Key="LayerFillColorDefaultBrush" Color="#333333" />
+                <SolidColorBrush x:Key="SubtleFillColorSecondaryBrush" Color="#0FFFFFFF" />
+                <SolidColorBrush x:Key="SubtleFillColorTertiaryBrush" Color="#0AFFFFFF" />
+                
+                <!-- Text colors for dark mode -->
+                <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#FFFFFF" />
+                <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#C5C5C5" />
+                <SolidColorBrush x:Key="TextFillColorTertiaryBrush" Color="#A0A0A0" />
+                <SolidColorBrush x:Key="TextFillColorDisabledBrush" Color="#5D5D5D" />
+            </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!-- Subtle button style for navigation and toolbar buttons -->
+            <Style x:Key="SubtleButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+                <Setter Property="FontWeight" Value="Normal" />
+                <Setter Property="FontSize" Value="{ThemeResource ControlContentThemeFontSize}" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FocusVisualMargin" Value="-3" />
+                <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <ContentPresenter x:Name="ContentPresenter"
+                                Background="{TemplateBinding Background}"
+                                BackgroundSizing="InnerBorderEdge"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                ContentTransitions="{TemplateBinding ContentTransitions}"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                Padding="{TemplateBinding Padding}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                AutomationProperties.AccessibilityView="Raw">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="ContentPresenter.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="ContentPresenter.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TextFillColorDisabledBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </ContentPresenter>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

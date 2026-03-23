@@ -860,28 +860,28 @@ public sealed class ProcessItem : INotifyPropertyChanged
     public double CpuPercent
     {
         get => _cpuPercent;
-        set { if (SetField(ref _cpuPercent, value)) { OnPropertyChanged(nameof(CpuDisplay)); OnPropertyChanged(nameof(CpuBackground)); } }
+        set { if (SetField(ref _cpuPercent, value)) { OnPropertyChanged(nameof(CpuDisplay)); OnPropertyChanged(nameof(CpuBackground)); OnPropertyChanged(nameof(HasCpuHeatMap)); } }
     }
 
     private double _memoryMB;
     public double MemoryMB
     {
         get => _memoryMB;
-        set { if (SetField(ref _memoryMB, value)) { OnPropertyChanged(nameof(MemoryDisplay)); OnPropertyChanged(nameof(MemoryBackground)); } }
+        set { if (SetField(ref _memoryMB, value)) { OnPropertyChanged(nameof(MemoryDisplay)); OnPropertyChanged(nameof(MemoryBackground)); OnPropertyChanged(nameof(HasMemoryHeatMap)); } }
     }
 
     private double _diskMBps;
     public double DiskMBps
     {
         get => _diskMBps;
-        set { if (SetField(ref _diskMBps, value)) { OnPropertyChanged(nameof(DiskDisplay)); OnPropertyChanged(nameof(DiskBackground)); } }
+        set { if (SetField(ref _diskMBps, value)) { OnPropertyChanged(nameof(DiskDisplay)); OnPropertyChanged(nameof(DiskBackground)); OnPropertyChanged(nameof(HasDiskHeatMap)); } }
     }
 
     private double _networkMbps;
     public double NetworkMbps
     {
         get => _networkMbps;
-        set { if (SetField(ref _networkMbps, value)) { OnPropertyChanged(nameof(NetworkDisplay)); OnPropertyChanged(nameof(NetworkBackground)); } }
+        set { if (SetField(ref _networkMbps, value)) { OnPropertyChanged(nameof(NetworkDisplay)); OnPropertyChanged(nameof(NetworkBackground)); OnPropertyChanged(nameof(HasNetworkHeatMap)); } }
     }
 
     private double _gpuPercent;
@@ -958,6 +958,12 @@ public sealed class ProcessItem : INotifyPropertyChanged
         > 0.3 => Low,
         _ => TransparentBrush
     };
+
+    // ── Heat-map visibility (only show overlay when there's actual heat) ──
+    public Visibility HasCpuHeatMap => CpuPercent > 1 ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility HasMemoryHeatMap => MemoryMB > 100 ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility HasDiskHeatMap => DiskMBps > 0.5 ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility HasNetworkHeatMap => NetworkMbps > 0.3 ? Visibility.Visible : Visibility.Collapsed;
 
     public Brush GpuBackground => GpuPercent switch
     {

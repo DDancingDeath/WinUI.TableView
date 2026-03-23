@@ -11,6 +11,91 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Page.Resources>
+        <!-- Task Manager style: zero spacing between rows -->
+        <Style x:Key="TaskManagerRowStyle" TargetType="tableView:TableViewRow">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        </Style>
+
+        <!-- Default cell style: zero corner radius, no hover effect -->
+        <Style TargetType="tableView:TableViewCell">
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="tableView:TableViewCell">
+                        <Grid Background="{TemplateBinding Background}"
+                              BorderBrush="{TemplateBinding BorderBrush}"
+                              BorderThickness="{TemplateBinding BorderThickness}"
+                              CornerRadius="{TemplateBinding CornerRadius}"
+                              Padding="{TemplateBinding Padding}">
+                            <ContentPresenter 
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver">
+                                        <!-- No visual changes on hover -->
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <!-- No visual changes on press -->
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Metric cell style: zero padding with uniform blue background, no hover effect -->
+        <Style x:Key="MetricCellStyle" TargetType="tableView:TableViewCell">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="{ThemeResource MetricColumnBackgroundBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="tableView:TableViewCell">
+                        <Grid Background="{TemplateBinding Background}"
+                              BorderBrush="{TemplateBinding BorderBrush}"
+                              BorderThickness="{TemplateBinding BorderThickness}"
+                              CornerRadius="{TemplateBinding CornerRadius}"
+                              Padding="{TemplateBinding Padding}">
+                            <ContentPresenter 
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver">
+                                        <!-- No visual changes on hover -->
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <!-- No visual changes on press -->
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
         <!-- Name column: colored brand tile (parents) or plain indented icon (children) -->
         <DataTemplate x:Key="NameCellTemplate">
             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
@@ -52,34 +137,42 @@
 
         <!-- CPU cell with heat-map background — numbers right-aligned like real TM -->
         <DataTemplate x:Key="CpuCellTemplate">
-            <Border Background="{Binding CpuBackground}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <!-- Heat-map overlay for high values only -->
+                <Border Background="{Binding CpuBackground}" Visibility="{Binding HasCpuHeatMap}" />
                 <TextBlock Text="{Binding CpuDisplay}" FontSize="12"
                            VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
-            </Border>
+            </Grid>
         </DataTemplate>
 
         <!-- Memory cell with heat-map background -->
         <DataTemplate x:Key="MemoryCellTemplate">
-            <Border Background="{Binding MemoryBackground}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <!-- Heat-map overlay for high values only -->
+                <Border Background="{Binding MemoryBackground}" Visibility="{Binding HasMemoryHeatMap}" />
                 <TextBlock Text="{Binding MemoryDisplay}" FontSize="12"
                            VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
-            </Border>
+            </Grid>
         </DataTemplate>
 
         <!-- Disk cell with heat-map background -->
         <DataTemplate x:Key="DiskCellTemplate">
-            <Border Background="{Binding DiskBackground}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <!-- Heat-map overlay for high values only -->
+                <Border Background="{Binding DiskBackground}" Visibility="{Binding HasDiskHeatMap}" />
                 <TextBlock Text="{Binding DiskDisplay}" FontSize="12"
                            VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
-            </Border>
+            </Grid>
         </DataTemplate>
 
         <!-- Network cell with heat-map background -->
         <DataTemplate x:Key="NetworkCellTemplate">
-            <Border Background="{Binding NetworkBackground}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <!-- Heat-map overlay for high values only -->
+                <Border Background="{Binding NetworkBackground}" Visibility="{Binding HasNetworkHeatMap}" />
                 <TextBlock Text="{Binding NetworkDisplay}" FontSize="12"
                            VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
-            </Border>
+            </Grid>
         </DataTemplate>
     </Page.Resources>
 
@@ -255,8 +348,14 @@
                 RowMinHeight="24"
                 SelectionMode="Single"
                 SelectionUnit="Row"
-                GridLinesVisibility="Horizontal"
-                HeaderGridLinesVisibility="All">
+                GridLinesVisibility="None"
+                HeaderGridLinesVisibility="All"
+                ItemContainerStyle="{StaticResource TaskManagerRowStyle}">
+                <tableView:TableView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <ItemsStackPanel Orientation="Vertical" />
+                    </ItemsPanelTemplate>
+                </tableView:TableView.ItemsPanel>
                 <tableView:TableView.ContextFlyout>
                     <MenuFlyout>
                         <MenuFlyoutItem Text="Switch to" IsEnabled="False" />
@@ -303,18 +402,22 @@
                         CanSort="True" SortMemberPath="StatusText" />
                     <tableView:TableViewTemplateColumn x:Name="CpuColumn" Header="CPU"
                         CellTemplate="{StaticResource CpuCellTemplate}"
+                        CellStyle="{StaticResource MetricCellStyle}"
                         MinWidth="60" Width="80"
                         CanSort="True" SortMemberPath="CpuPercent" />
                     <tableView:TableViewTemplateColumn x:Name="MemoryColumn" Header="Memory"
                         CellTemplate="{StaticResource MemoryCellTemplate}"
+                        CellStyle="{StaticResource MetricCellStyle}"
                         MinWidth="85" Width="105"
                         CanSort="True" SortMemberPath="MemoryMB" />
                     <tableView:TableViewTemplateColumn x:Name="DiskColumn" Header="Disk"
                         CellTemplate="{StaticResource DiskCellTemplate}"
+                        CellStyle="{StaticResource MetricCellStyle}"
                         MinWidth="65" Width="80"
                         CanSort="True" SortMemberPath="DiskMBps" />
                     <tableView:TableViewTemplateColumn x:Name="NetworkColumn" Header="Network"
                         CellTemplate="{StaticResource NetworkCellTemplate}"
+                        CellStyle="{StaticResource MetricCellStyle}"
                         MinWidth="75" Width="90"
                         CanSort="True" SortMemberPath="NetworkMbps" />
                 </tableView:TableView.Columns>

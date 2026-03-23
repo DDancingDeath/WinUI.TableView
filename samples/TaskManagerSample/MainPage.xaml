@@ -8,198 +8,397 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:tableView="using:WinUI.TableView"
     mc:Ignorable="d"
-    RequestedTheme="Dark"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Page.Resources>
-        <!-- Name column: icon + process name -->
+        <!-- Name column: colored brand tile (parents) or plain indented icon (children) -->
         <DataTemplate x:Key="NameCellTemplate">
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Image Source="{Binding IconPath}" Width="16" Height="16"
-                       Visibility="{Binding HasIcon}" />
-                <FontIcon Glyph="{Binding IconGlyph}" FontSize="14"
-                          Visibility="{Binding HasGlyph}" />
-                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                        Margin="{Binding NameIndentMargin}">
+                <!-- Colored brand tile: top-level parent processes only -->
+                <Border Width="18" Height="18" CornerRadius="3"
+                        Background="{Binding IconBackground}"
+                        Visibility="{Binding ParentIconVisibility}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <FontIcon Glyph="{Binding IconGlyph}" FontSize="10" Foreground="White"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <!-- Plain icon: child sub-processes (same 18px box for alignment) -->
+                <Grid Width="18" Height="18" Visibility="{Binding ChildIconVisibility}">
+                    <FontIcon Glyph="{Binding IconGlyph}" FontSize="13"
+                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+                <TextBlock Text="{Binding DisplayName}" FontSize="12"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             </StackPanel>
         </DataTemplate>
 
-        <!-- Status column: "Efficiency mode" badge or "Suspended" -->
+        <!-- Status column: Suspended yellow icon  /  Efficiency mode leaf -->
         <DataTemplate x:Key="StatusCellTemplate">
-            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                <TextBlock Text="{Binding StatusText}" TextTrimming="CharacterEllipsis"
+            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                <!-- Suspended: yellow pause badge -->
+                <FontIcon Glyph="&#xF8A8;" FontSize="13" Foreground="#D4A017"
+                          Visibility="{Binding IsSuspendedVisibility}" />
+                <!-- Efficiency mode: dimmed label + green leaf -->
+                <TextBlock Text="{Binding StatusText}" FontSize="12"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Visibility="{Binding HasStatusText}" />
-                <FontIcon Glyph="&#xE945;" FontSize="12" Foreground="#2D7D2D"
-                           Visibility="{Binding IsEfficiencyMode}" />
+                <FontIcon Glyph="&#xEC0A;" FontSize="12" Foreground="#5DB85D"
+                          Visibility="{Binding IsEfficiencyMode}" />
             </StackPanel>
         </DataTemplate>
 
-        <!-- CPU cell: text with optional highlight background -->
+        <!-- CPU cell with heat-map background — numbers right-aligned like real TM -->
         <DataTemplate x:Key="CpuCellTemplate">
-            <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-                <Border Background="{Binding CpuBackground}"
-                        CornerRadius="0" Margin="-12,-6" Padding="12,6">
-                    <TextBlock Text="{Binding CpuDisplay}"
-                               VerticalAlignment="Center" />
-                </Border>
-            </Grid>
+            <Border Background="{Binding CpuBackground}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <TextBlock Text="{Binding CpuDisplay}" FontSize="12"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
+            </Border>
         </DataTemplate>
 
-        <!-- Memory cell with highlight -->
+        <!-- Memory cell with heat-map background -->
         <DataTemplate x:Key="MemoryCellTemplate">
-            <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-                <Border Background="{Binding MemoryBackground}"
-                        CornerRadius="0" Margin="-12,-6" Padding="12,6">
-                    <TextBlock Text="{Binding MemoryDisplay}"
-                               VerticalAlignment="Center" />
-                </Border>
-            </Grid>
+            <Border Background="{Binding MemoryBackground}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <TextBlock Text="{Binding MemoryDisplay}" FontSize="12"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
+            </Border>
         </DataTemplate>
 
-        <!-- Disk cell with highlight -->
+        <!-- Disk cell with heat-map background -->
         <DataTemplate x:Key="DiskCellTemplate">
-            <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-                <Border Background="{Binding DiskBackground}"
-                        CornerRadius="0" Margin="-12,-6" Padding="12,6">
-                    <TextBlock Text="{Binding DiskDisplay}"
-                               VerticalAlignment="Center" />
-                </Border>
-            </Grid>
+            <Border Background="{Binding DiskBackground}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <TextBlock Text="{Binding DiskDisplay}" FontSize="12"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
+            </Border>
         </DataTemplate>
 
-        <!-- Network cell with highlight -->
+        <!-- Network cell with heat-map background -->
         <DataTemplate x:Key="NetworkCellTemplate">
-            <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-                <Border Background="{Binding NetworkBackground}"
-                        CornerRadius="0" Margin="-12,-6" Padding="12,6">
-                    <TextBlock Text="{Binding NetworkDisplay}"
-                               VerticalAlignment="Center" />
-                </Border>
-            </Grid>
+            <Border Background="{Binding NetworkBackground}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <TextBlock Text="{Binding NetworkDisplay}" FontSize="12"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
+            </Border>
+        </DataTemplate>
+
+        <!-- GPU cell with heat-map background -->
+        <DataTemplate x:Key="GpuCellTemplate">
+            <Border Background="{Binding GpuBackground}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <TextBlock Text="{Binding GpuDisplay}" FontSize="12"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
+            </Border>
+        </DataTemplate>
+
+        <!-- GPU Engine cell -->
+        <DataTemplate x:Key="GpuEngineCellTemplate">
+            <TextBlock Text="{Binding GpuEngine}" FontSize="12" VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       TextTrimming="CharacterEllipsis" />
+        </DataTemplate>
+
+        <!-- Power Usage cell — plain text, no heat-map (matches real Task Manager) -->
+        <DataTemplate x:Key="PowerUsageCellTemplate">
+            <TextBlock Text="{Binding PowerUsage}" FontSize="12" VerticalAlignment="Center" />
+        </DataTemplate>
+
+        <!-- Power Usage Trend cell — plain text, no heat-map -->
+        <DataTemplate x:Key="PowerUsageTrendCellTemplate">
+            <TextBlock Text="{Binding PowerUsageTrend}" FontSize="12" VerticalAlignment="Center" />
         </DataTemplate>
     </Page.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="48" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="48" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-        <!-- Title bar area -->
-        <Grid Padding="16,10" ColumnSpacing="12">
+        <!-- ═══ Custom title bar ═══ -->
+        <Grid x:Name="AppTitleBar"
+              Grid.Row="0" Grid.ColumnSpan="2"
+              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+              BorderThickness="0,0,0,1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="150" />
             </Grid.ColumnDefinitions>
-
-            <TextBlock Text="Processes" FontSize="18" FontWeight="SemiBold"
-                       VerticalAlignment="Center" />
-
-            <AutoSuggestBox Grid.Column="1"
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8"
+                        Margin="12,0,16,0" VerticalAlignment="Center"
+                        IsHitTestVisible="False">
+                <FontIcon Glyph="&#xE9D9;" FontSize="16" />
+                <TextBlock Text="Task Manager" FontSize="12" VerticalAlignment="Center" />
+            </StackPanel>
+            <AutoSuggestBox x:Name="SearchBox"
+                            Grid.Column="1"
                             PlaceholderText="Type a name, publisher, or PID to search"
                             QueryIcon="Find"
-                            Width="380"
+                            MaxWidth="460"
                             HorizontalAlignment="Center"
-                            VerticalAlignment="Center" />
-
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                <ToggleSwitch x:Name="ThemeToggle" Header="Dark" OnContent="" OffContent=""
-                              IsOn="True" Toggled="OnThemeToggled"
-                              VerticalAlignment="Center" MinWidth="0" />
-                <Button Content="Run new task" />
-                <Button Content="End task" Click="OnEndTaskClick" />
-            </StackPanel>
+                            VerticalAlignment="Center"
+                            TextChanged="OnSearchTextChanged" />
         </Grid>
 
-        <!-- Summary bar: CPU / Memory / Disk / Network totals -->
-        <Grid Grid.Row="1" Padding="16,0,16,4">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
+        <!-- ═══ Left navigation sidebar ═══ -->
+        <Grid Grid.Row="1"
+              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+              BorderThickness="0,0,1,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="24">
-                <StackPanel HorizontalAlignment="Center" Spacing="2">
-                    <TextBlock x:Name="CpuSummary" Text="0%" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="CPU" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               HorizontalAlignment="Center" />
-                </StackPanel>
-                <StackPanel HorizontalAlignment="Center" Spacing="2">
-                    <TextBlock x:Name="MemorySummary" Text="0%" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="Memory" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               HorizontalAlignment="Center" />
-                </StackPanel>
-                <StackPanel HorizontalAlignment="Center" Spacing="2">
-                    <TextBlock x:Name="DiskSummary" Text="0%" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="Disk" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               HorizontalAlignment="Center" />
-                </StackPanel>
-                <StackPanel HorizontalAlignment="Center" Spacing="2">
-                    <TextBlock x:Name="NetworkSummary" Text="0%" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="Network" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               HorizontalAlignment="Center" />
-                </StackPanel>
+            <StackPanel Spacing="4" Padding="4,8,4,0">
+                <Button Style="{StaticResource SubtleButtonStyle}" Width="40" Height="36"
+                        HorizontalAlignment="Center" Padding="0"
+                        ToolTipService.ToolTip="Navigation">
+                    <FontIcon Glyph="&#xE700;" FontSize="16" />
+                </Button>
+                <!-- Processes (selected) -->
+                <Button Style="{StaticResource SubtleButtonStyle}" Width="40" Height="36"
+                        HorizontalAlignment="Center" Padding="0"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        ToolTipService.ToolTip="Processes">
+                    <FontIcon Glyph="&#xE9D9;" FontSize="16" />
+                </Button>
+                <!-- Performance -->
+                <Button Style="{StaticResource SubtleButtonStyle}" Width="40" Height="36"
+                        HorizontalAlignment="Center" Padding="0"
+                        ToolTipService.ToolTip="Performance">
+                    <FontIcon Glyph="&#xE9F9;" FontSize="16" />
+                </Button>
+                <!-- App history -->
+                <Button Style="{StaticResource SubtleButtonStyle}" Width="40" Height="36"
+                        HorizontalAlignment="Center" Padding="0"
+                        ToolTipService.ToolTip="App history">
+                    <FontIcon Glyph="&#xE81C;" FontSize="16" />
+                </Button>
+                <!-- Startup apps -->
+                <Button Style="{StaticResource SubtleButtonStyle}" Width="40" Height="36"
+                        HorizontalAlignment="Center" Padding="0"
+                        ToolTipService.ToolTip="Startup apps">
+                    <FontIcon Glyph="&#xE7B5;" FontSize="16" />
+                </Button>
+                <!-- Users -->
+                <Button Style="{StaticResource SubtleButtonStyle}" Width="40" Height="36"
+                        HorizontalAlignment="Center" Padding="0"
+                        ToolTipService.ToolTip="Users">
+                    <FontIcon Glyph="&#xE77B;" FontSize="16" />
+                </Button>
+                <!-- Details -->
+                <Button Style="{StaticResource SubtleButtonStyle}" Width="40" Height="36"
+                        HorizontalAlignment="Center" Padding="0"
+                        ToolTipService.ToolTip="Details">
+                    <FontIcon Glyph="&#xE8A1;" FontSize="16" />
+                </Button>
+                <!-- Services -->
+                <Button Style="{StaticResource SubtleButtonStyle}" Width="40" Height="36"
+                        HorizontalAlignment="Center" Padding="0"
+                        ToolTipService.ToolTip="Services">
+                    <FontIcon Glyph="&#xE912;" FontSize="16" />
+                </Button>
             </StackPanel>
+
+            <!-- Settings gear at bottom -->
+            <Button Grid.Row="1" Style="{StaticResource SubtleButtonStyle}"
+                    Width="40" Height="36" HorizontalAlignment="Center"
+                    Padding="0" Margin="0,0,0,8"
+                    ToolTipService.ToolTip="Settings">
+                <FontIcon Glyph="&#xE713;" FontSize="16" />
+            </Button>
         </Grid>
 
-        <!-- Main TableView -->
-        <tableView:TableView
-            x:Name="ProcessTable"
-            Grid.Row="2"
-            AutoGenerateColumns="False"
-            ChildrenPath="Children"
-            GroupByPath="Category"
-            ShowGroupHeaders="True"
-            ShowGroupItemCount="True"
-            IsHierarchicalEnabled="True"
-            IsExpandedPath="IsExpanded"
-            HeadersVisibility="Columns"
-            ItemsSource="{x:Bind Processes}"
-            FrozenColumnCount="1"
-            RowHeight="32"
-            RowMinHeight="28"
-            SelectionMode="Single"
-            SelectionUnit="Row"
-            GridLinesVisibility="Horizontal"
-            HeaderGridLinesVisibility="All">
-            <tableView:TableView.Columns>
-                <tableView:TableViewTemplateColumn Header="Name"
-                    CellTemplate="{StaticResource NameCellTemplate}"
-                    MinWidth="320" Width="400"
-                    CanSort="True" SortMemberPath="Name" />
-                <tableView:TableViewTemplateColumn Header="Status"
-                    CellTemplate="{StaticResource StatusCellTemplate}"
-                    MinWidth="100" Width="130"
-                    CanSort="True" SortMemberPath="StatusText" />
-                <tableView:TableViewTemplateColumn Header="CPU"
-                    CellTemplate="{StaticResource CpuCellTemplate}"
-                    MinWidth="70" Width="90"
-                    CanSort="True" SortMemberPath="CpuPercent" />
-                <tableView:TableViewTemplateColumn Header="Memory"
-                    CellTemplate="{StaticResource MemoryCellTemplate}"
-                    MinWidth="90" Width="120"
-                    CanSort="True" SortMemberPath="MemoryMB" />
-                <tableView:TableViewTemplateColumn Header="Disk"
-                    CellTemplate="{StaticResource DiskCellTemplate}"
-                    MinWidth="80" Width="100"
-                    CanSort="True" SortMemberPath="DiskMBps" />
-                <tableView:TableViewTemplateColumn Header="Network"
-                    CellTemplate="{StaticResource NetworkCellTemplate}"
-                    MinWidth="80" Width="100"
-                    CanSort="True" SortMemberPath="NetworkMbps" />
-            </tableView:TableView.Columns>
-        </tableView:TableView>
+        <!-- ═══ Main content area ═══ -->
+        <Grid Grid.Row="1" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <!-- Status bar -->
-        <Grid Grid.Row="3" Padding="16,6" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-            <TextBlock x:Name="StatusBar" FontSize="12"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <!-- ── Top bar: "Processes" + Action buttons ── -->
+            <Grid Padding="16,6,8,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="Processes" FontSize="14" FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+                    <Button Style="{StaticResource SubtleButtonStyle}" Padding="8,6"
+                            ToolTipService.ToolTip="Run new task">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE8A0;" FontSize="14" />
+                            <TextBlock Text="Run new task" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SubtleButtonStyle}" Padding="8,6"
+                            ToolTipService.ToolTip="End task" Click="OnEndTaskClick">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE711;" FontSize="14" />
+                            <TextBlock Text="End task" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SubtleButtonStyle}" Padding="8,6"
+                            ToolTipService.ToolTip="Efficiency mode">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xEC0A;" FontSize="14" />
+                            <TextBlock Text="Efficiency mode" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SubtleButtonStyle}" Padding="8,6"
+                            ToolTipService.ToolTip="More options">
+                        <FontIcon Glyph="&#xE712;" FontSize="14" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+                <tableView:TableView
+                x:Name="ProcessTable"
+                Grid.Row="1"
+                AutoGenerateColumns="False"
+                ChildrenPath="Children"
+                GroupByPath="Category"
+                ShowGroupHeaders="True"
+                ShowGroupItemCount="True"
+                IsHierarchicalEnabled="True"
+                IsExpandedPath="IsExpanded"
+                HeadersVisibility="Columns"
+                ItemsSource="{x:Bind Processes}"
+                FrozenColumnCount="1"
+                RowHeight="28"
+                RowMinHeight="24"
+                SelectionMode="Single"
+                SelectionUnit="Row"
+                GridLinesVisibility="Horizontal"
+                HeaderGridLinesVisibility="All">
+                <tableView:TableView.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="Switch to" IsEnabled="False" />
+                        <MenuFlyoutItem Text="Bring to front" IsEnabled="False" />
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem Text="End task" Click="OnEndTaskClick">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE711;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem Text="Efficiency mode" IsEnabled="False">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xEC0A;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem Text="Open file location" IsEnabled="False">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE8DA;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem Text="Search online" IsEnabled="False">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE721;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem Text="Properties" IsEnabled="False">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE946;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem Text="Create dump file" IsEnabled="False" />
+                    </MenuFlyout>
+                </tableView:TableView.ContextFlyout>
+                <tableView:TableView.Columns>
+                    <tableView:TableViewTemplateColumn Header="Name"
+                        CellTemplate="{StaticResource NameCellTemplate}"
+                        MinWidth="260" Width="*"
+                        CanSort="True" SortMemberPath="Name" />
+                    <tableView:TableViewTemplateColumn Header="Status"
+                        CellTemplate="{StaticResource StatusCellTemplate}"
+                        MinWidth="80" Width="110"
+                        CanSort="True" SortMemberPath="StatusText" />
+                    <tableView:TableViewTemplateColumn x:Name="CpuColumn" Header="CPU"
+                        CellTemplate="{StaticResource CpuCellTemplate}"
+                        MinWidth="60" Width="80"
+                        CanSort="True" SortMemberPath="CpuPercent" />
+                    <tableView:TableViewTemplateColumn x:Name="MemoryColumn" Header="Memory"
+                        CellTemplate="{StaticResource MemoryCellTemplate}"
+                        MinWidth="85" Width="105"
+                        CanSort="True" SortMemberPath="MemoryMB" />
+                    <tableView:TableViewTemplateColumn x:Name="DiskColumn" Header="Disk"
+                        CellTemplate="{StaticResource DiskCellTemplate}"
+                        MinWidth="65" Width="80"
+                        CanSort="True" SortMemberPath="DiskMBps" />
+                    <tableView:TableViewTemplateColumn x:Name="NetworkColumn" Header="Network"
+                        CellTemplate="{StaticResource NetworkCellTemplate}"
+                        MinWidth="75" Width="90"
+                        CanSort="True" SortMemberPath="NetworkMbps" />
+                    <tableView:TableViewTemplateColumn x:Name="GpuColumn" Header="GPU"
+                        CellTemplate="{StaticResource GpuCellTemplate}"
+                        MinWidth="60" Width="75"
+                        CanSort="True" SortMemberPath="GpuPercent" />
+                    <tableView:TableViewTemplateColumn Header="GPU engine"
+                        CellTemplate="{StaticResource GpuEngineCellTemplate}"
+                        MinWidth="100" Width="130"
+                        CanSort="False" />
+                    <tableView:TableViewTemplateColumn Header="Power usage"
+                        CellTemplate="{StaticResource PowerUsageCellTemplate}"
+                        MinWidth="90" Width="105"
+                        CanSort="True" SortMemberPath="PowerUsage" />
+                    <tableView:TableViewTemplateColumn Header="Power usage trend"
+                        CellTemplate="{StaticResource PowerUsageTrendCellTemplate}"
+                        MinWidth="110" Width="130"
+                        CanSort="True" SortMemberPath="PowerUsageTrend" />
+                </tableView:TableView.Columns>
+            </tableView:TableView>
+
+            <!-- ── Bottom Status Bar ── -->
+            <Border Grid.Row="2"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,1,0,0"
+                    Padding="12,0">
+                <StackPanel Orientation="Horizontal" Spacing="24" Height="28">
+                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                        <TextBlock Text="CPU" FontSize="11"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusCpuText" Text="0%" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                        <TextBlock Text="Memory" FontSize="11"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusRamText" Text="0 GB (0%)" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                        <TextBlock Text="Disk" FontSize="11"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusDiskText" Text="0%" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                        <TextBlock Text="Network" FontSize="11"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusNetText" Text="0 Kbps" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                        <TextBlock Text="GPU 0" FontSize="11"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusGpuText" Text="0%" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </Grid>
     </Grid>
 </Page>

@@ -1,9 +1,11 @@
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Windows.UI;
+using WinUI.TableView;
 
 namespace TaskManagerSample;
 
@@ -11,6 +13,8 @@ public partial class MainPage : Page
 {
     private readonly DispatcherTimer _timer;
     private readonly Random _rng = new();
+    private readonly List<ProcessItem> _allProcesses = [];
+    private TextBlock? _cpuHeaderPct, _memHeaderPct, _diskHeaderPct, _netHeaderPct, _gpuHeaderPct;
 
     public ObservableCollection<ProcessItem> Processes { get; } = [];
 
@@ -18,18 +22,114 @@ public partial class MainPage : Page
     {
         this.InitializeComponent();
 
+        // Extend content into title bar so our custom title bar fills the chrome area
+        if (Application.Current is App { MainWindow: { } win })
+        {
+            win.ExtendsContentIntoTitleBar = true;
+            win.SetTitleBar(AppTitleBar);
+        }
+
         PopulateProcesses();
-        UpdateStatusBar();
-        UpdateSummary();
+        SetupChildRowStyle();
+        SetupColumnHeaders();
+
+        ProcessItem.IsDarkTheme = ActualTheme == ElementTheme.Dark;
+        ActualThemeChanged += (s, _) => ProcessItem.IsDarkTheme = ((FrameworkElement)s).ActualTheme == ElementTheme.Dark;
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _timer.Tick += OnTimerTick;
         _timer.Start();
     }
 
-    private void OnThemeToggled(object sender, RoutedEventArgs e)
+    private static readonly SolidColorBrush _childRowBackground = new(Color.FromArgb(20, 255, 255, 255));
+    private static readonly SolidColorBrush _defaultRowBackground = new(Colors.Transparent);
+
+    private void SetupChildRowStyle()
     {
-        RequestedTheme = ThemeToggle.IsOn ? ElementTheme.Dark : ElementTheme.Light;
+        // Mark all children
+        foreach (var p in Processes)
+        {
+            if (p.Children is { Count: > 0 })
+            {
+                foreach (var child in p.Children)
+                    child.IsChild = true;
+            }
+        }
+
+        // Apply a subtle background to child rows at the row level
+        ProcessTable.ContainerContentChanging += OnContainerContentChanging;
+    }
+
+    private StackPanel CreateHeaderContent(string label, out TextBlock pctBlock)
+    {
+        pctBlock = new TextBlock
+        {
+            FontSize = 12,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        var labelBlock = new TextBlock
+        {
+            Text = label,
+            FontSize = 12,
+            Foreground = (SolidColorBrush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        return new StackPanel
+        {
+            Spacing = 0,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Children = { pctBlock, labelBlock }
+        };
+    }
+
+    private void SetupColumnHeaders()
+    {
+        CpuColumn.Header = CreateHeaderContent("CPU", out _cpuHeaderPct);
+        MemoryColumn.Header = CreateHeaderContent("Memory", out _memHeaderPct);
+        DiskColumn.Header = CreateHeaderContent("Disk", out _diskHeaderPct);
+        NetworkColumn.Header = CreateHeaderContent("Network", out _netHeaderPct);
+        GpuColumn.Header = CreateHeaderContent("GPU", out _gpuHeaderPct);
+        UpdateHeaderSummary();
+    }
+
+    private void UpdateHeaderSummary()
+    {
+        double totalCpu = 0, totalMem = 0, totalDisk = 0, totalNet = 0, totalGpu = 0;
+        foreach (var p in Processes)
+        {
+            totalCpu += p.CpuPercent;
+            totalMem += p.MemoryMB;
+            totalDisk += p.DiskMBps;
+            totalNet += p.NetworkMbps;
+            totalGpu += p.GpuPercent;
+        }
+
+        if (_cpuHeaderPct is not null) _cpuHeaderPct.Text = $"{Math.Min(totalCpu, 100):F0}%";
+        if (_memHeaderPct is not null) _memHeaderPct.Text = $"{totalMem / 1024 / 16 * 100:F0}%";
+        if (_diskHeaderPct is not null) _diskHeaderPct.Text = $"{Math.Min(totalDisk, 100):F0}%";
+        if (_netHeaderPct is not null) _netHeaderPct.Text = $"{Math.Min(totalNet, 100):F0}%";
+        if (_gpuHeaderPct is not null) _gpuHeaderPct.Text = $"{Math.Min(totalGpu, 100):F0}%";
+
+        // Bottom status bar
+        StatusCpuText.Text = $"{Math.Min(totalCpu, 100):F0}%";
+        var ramGB = totalMem / 1024.0;
+        var ramPct = totalMem / 16384.0 * 100.0;
+        StatusRamText.Text = $"{ramGB:F1}/{16.0:F0} GB ({Math.Min(ramPct, 100):F0}%)";
+        StatusDiskText.Text = $"{Math.Min(totalDisk, 100):F0}%";
+        StatusNetText.Text = totalNet >= 1.0 ? $"{totalNet:F1} Mbps"
+                           : totalNet > 0.001 ? $"{totalNet * 1000:F0} Kbps"
+                           : "0 Kbps";
+        StatusGpuText.Text = $"{Math.Min(totalGpu, 100):F0}%";
+    }
+
+    private void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+    {
+        if (args.ItemContainer is TableViewRow row)
+        {
+            row.Background = args.Item is ProcessItem { IsChild: true }
+                ? _childRowBackground
+                : _defaultRowBackground;
+        }
     }
 
     private void OnTimerTick(object? sender, object e)
@@ -48,7 +148,7 @@ public partial class MainPage : Page
             }
         }
 
-        UpdateSummary();
+        UpdateHeaderSummary();
     }
 
     private void RandomizeValues(ProcessItem p)
@@ -68,57 +168,76 @@ public partial class MainPage : Page
         // Network
         var netBase = p.IsHighNetwork ? _rng.NextDouble() * 1.5 : _rng.NextDouble() * 0.2;
         p.NetworkMbps = Math.Round(netBase, 1);
+
+        // GPU
+        var gpuBase = p.IsHighGpu ? _rng.NextDouble() * 20 + 3 : _rng.NextDouble() * 0.8;
+        p.GpuPercent = Math.Round(gpuBase, 1);
+
+        // Power usage derived from combined resource load
+        var powerScore = p.CpuPercent * 2.5 + p.MemoryMB / 600.0 + p.GpuPercent * 1.5;
+        p.PowerUsage = powerScore switch
+        {
+            > 50 => "Very high",
+            > 30 => "High",
+            > 15 => "Moderate",
+            > 5  => "Low",
+            _    => "Very low"
+        };
+        var trendScore = powerScore * (_rng.NextDouble() * 0.3 + 0.85);
+        p.PowerUsageTrend = trendScore switch
+        {
+            > 50 => "Very high",
+            > 30 => "High",
+            > 15 => "Moderate",
+            > 5  => "Low",
+            _    => "Very low"
+        };
     }
 
     private void AggregateFromChildren(ProcessItem parent)
     {
         if (parent.Children is not { Count: > 0 }) return;
 
-        double cpu = 0, mem = 0, disk = 0, net = 0;
+        double cpu = 0, mem = 0, disk = 0, net = 0, gpu = 0;
         foreach (var c in parent.Children)
         {
             cpu += c.CpuPercent;
             mem += c.MemoryMB;
             disk += c.DiskMBps;
             net += c.NetworkMbps;
+            gpu += c.GpuPercent;
         }
 
         parent.CpuPercent = Math.Round(cpu, 1);
         parent.MemoryMB = Math.Round(mem, 1);
         parent.DiskMBps = Math.Round(disk, 1);
         parent.NetworkMbps = Math.Round(net, 1);
+        parent.GpuPercent = Math.Round(gpu, 1);
     }
 
-    private void UpdateSummary()
-    {
-        double totalCpu = 0, totalMem = 0, totalDisk = 0, totalNet = 0;
-        int count = 0;
+    private FilterDescription? _searchFilter;
 
-        foreach (var p in Processes)
+    private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        var query = sender.Text?.Trim() ?? string.Empty;
+
+        // Remove previous search filter
+        if (_searchFilter is not null)
         {
-            totalCpu += p.CpuPercent;
-            totalMem += p.MemoryMB;
-            totalDisk += p.DiskMBps;
-            totalNet += p.NetworkMbps;
-            count++;
+            ProcessTable.FilterDescriptions.Remove(_searchFilter);
+            _searchFilter = null;
         }
 
-        CpuSummary.Text = $"{Math.Min(totalCpu, 100):F0}%";
-        MemorySummary.Text = $"{totalMem / 1024 / 16 * 100:F0}%"; // Simulate % of 16GB
-        DiskSummary.Text = $"{Math.Min(totalDisk, 100):F0}%";
-        NetworkSummary.Text = $"{Math.Min(totalNet, 100):F0}%";
-    }
-
-    private void UpdateStatusBar()
-    {
-        int total = 0;
-        foreach (var p in Processes)
+        if (!string.IsNullOrEmpty(query))
         {
-            total++;
-            if (p.Children is { Count: > 0 })
-                total += p.Children.Count;
+            _searchFilter = new FilterDescription(null, item =>
+                item is ProcessItem p &&
+                (p.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                 (p.Children is { Count: > 0 } &&
+                  p.Children.Any(c => c.Name.Contains(query, StringComparison.OrdinalIgnoreCase)))));
+
+            ProcessTable.FilterDescriptions.Add(_searchFilter);
         }
-        StatusBar.Text = $"Processes: {Processes.Count}   Threads: {total * 12}   Handles: {total * 347}";
     }
 
     private void OnEndTaskClick(object sender, RoutedEventArgs e)
@@ -129,13 +248,10 @@ public partial class MainPage : Page
             foreach (var p in Processes)
             {
                 if (p.Children?.Remove(selected) == true)
-                {
-                    UpdateStatusBar();
                     return;
-                }
             }
             Processes.Remove(selected);
-            UpdateStatusBar();
+            _allProcesses.Remove(selected);
         }
     }
 
@@ -188,11 +304,13 @@ public partial class MainPage : Page
             MemoryBaseline = 2371.1,
             IsHighCpu = true,
             IsHighNetwork = true,
+            IsHighGpu = true,
+            GpuEngine = "GPU 0 - 3D",
             IsExpanded = false,
             Children =
             [
-                new() { Name = "Browser", Category = "Apps", IconGlyph = "\uE774", MemoryBaseline = 320, IsHighCpu = true },
-                new() { Name = "GPU Process", Category = "Apps", IconGlyph = "\uE943", MemoryBaseline = 198 },
+                new() { Name = "Browser", Category = "Apps", IconGlyph = "\uE774", MemoryBaseline = 320, IsHighCpu = true, IsHighGpu = true, GpuEngine = "GPU 0 - 3D" },
+                new() { Name = "GPU Process", Category = "Apps", IconGlyph = "\uE943", MemoryBaseline = 198, IsHighGpu = true, GpuEngine = "GPU 0 - Video Decode" },
                 new() { Name = "Utility: Audio Service", Category = "Apps", IconGlyph = "\uE8D6", MemoryBaseline = 42 },
                 new() { Name = "Utility: Network Service", Category = "Apps", IconGlyph = "\uE968", MemoryBaseline = 56, IsHighNetwork = true },
                 new() { Name = "Utility: Storage Service", Category = "Apps", IconGlyph = "\uEDA2", MemoryBaseline = 28 },
@@ -234,13 +352,15 @@ public partial class MainPage : Page
             MemoryBaseline = 264.8,
             IsHighCpu = true,
             IsHighNetwork = true,
+            IsHighGpu = true,
+            GpuEngine = "GPU 0 - 3D",
             IsExpanded = false,
             StatusText = "Efficiency …",
             IsEfficiency = true,
             Children =
             [
-                new() { Name = "Teams Main", Category = "Apps", IconGlyph = "\uE902", MemoryBaseline = 180, IsHighCpu = true },
-                new() { Name = "Teams GPU", Category = "Apps", IconGlyph = "\uE943", MemoryBaseline = 32 },
+                new() { Name = "Teams Main", Category = "Apps", IconGlyph = "\uE902", MemoryBaseline = 180, IsHighCpu = true, IsHighGpu = true, GpuEngine = "GPU 0 - 3D" },
+                new() { Name = "Teams GPU", Category = "Apps", IconGlyph = "\uE943", MemoryBaseline = 32, IsHighGpu = true, GpuEngine = "GPU 0 - Copy" },
                 new() { Name = "Teams Utility", Category = "Apps", IconGlyph = "\uE713", MemoryBaseline = 18 },
                 new() { Name = "Teams Media", Category = "Apps", IconGlyph = "\uE8D6", MemoryBaseline = 34.8, IsHighNetwork = true },
             ]
@@ -253,6 +373,8 @@ public partial class MainPage : Page
             IconGlyph = "\uE7C3",
             MemoryBaseline = 642.8,
             IsHighCpu = true,
+            IsHighGpu = true,
+            GpuEngine = "GPU 0 - 3D",
         });
 
         Processes.Add(new ProcessItem
@@ -263,6 +385,8 @@ public partial class MainPage : Page
             MemoryBaseline = 1159.1,
             IsHighCpu = true,
             IsHighDisk = true,
+            IsHighGpu = true,
+            GpuEngine = "GPU 0 - 3D",
         });
 
         Processes.Add(new ProcessItem
@@ -272,6 +396,8 @@ public partial class MainPage : Page
             IconGlyph = "\uE7C3",
             MemoryBaseline = 962.4,
             IsHighCpu = true,
+            IsHighGpu = true,
+            GpuEngine = "GPU 0 - 3D",
         });
 
         Processes.Add(new ProcessItem
@@ -281,6 +407,8 @@ public partial class MainPage : Page
             IconGlyph = "\uE7C3",
             MemoryBaseline = 1301.1,
             IsHighCpu = true,
+            IsHighGpu = true,
+            GpuEngine = "GPU 0 - 3D",
         });
 
         Processes.Add(new ProcessItem
@@ -290,6 +418,7 @@ public partial class MainPage : Page
             IconGlyph = "\uE8D2",
             MemoryBaseline = 360.3,
             IsHighCpu = true,
+            GpuEngine = "GPU 0 - 3D",
         });
 
         Processes.Add(new ProcessItem
@@ -298,6 +427,8 @@ public partial class MainPage : Page
             Category = "Apps",
             IconGlyph = "\uE737",
             MemoryBaseline = 170.1,
+            IsHighGpu = true,
+            GpuEngine = "GPU 0 - 3D",
         });
 
         Processes.Add(new ProcessItem
@@ -344,6 +475,34 @@ public partial class MainPage : Page
             IconGlyph = "\uE9D9",
             MemoryBaseline = 38.2,
             IsHighCpu = true,
+            GpuEngine = "GPU 0 - 3D",
+        });
+
+        Processes.Add(new ProcessItem
+        {
+            Name = "Photos",
+            Category = "Apps",
+            IconGlyph = "\uEB9F",
+            MemoryBaseline = 12.4,
+            IsSuspended = true,
+        });
+
+        Processes.Add(new ProcessItem
+        {
+            Name = "Snipping Tool",
+            Category = "Apps",
+            IconGlyph = "\uECD5",
+            MemoryBaseline = 14.2,
+            IsSuspended = true,
+        });
+
+        Processes.Add(new ProcessItem
+        {
+            Name = "Xbox",
+            Category = "Apps",
+            IconGlyph = "\uE7FC",
+            MemoryBaseline = 18.6,
+            IsSuspended = true,
         });
 
         // ── Background processes ──
@@ -396,6 +555,8 @@ public partial class MainPage : Page
             IconGlyph = "\uE7BA",
             MemoryBaseline = 124.6,
             IsHighCpu = true,
+            IsHighGpu = true,
+            GpuEngine = "GPU 0 - 3D",
         });
 
         Processes.Add(new ProcessItem
@@ -461,6 +622,7 @@ public partial class MainPage : Page
             IconGlyph = "\uE721",
             MemoryBaseline = 92.3,
             IsHighCpu = true,
+            GpuEngine = "GPU 0 - Video Decode",
         });
 
         Processes.Add(new ProcessItem
@@ -621,6 +783,10 @@ public partial class MainPage : Page
             MemoryBaseline = 112.5,
             IsHighCpu = true,
         });
+
+        // Keep a copy for search filtering
+        foreach (var p in Processes)
+            _allProcesses.Add(p);
     }
 }
 
@@ -630,18 +796,63 @@ public partial class MainPage : Page
 /// </summary>
 public sealed class ProcessItem : INotifyPropertyChanged
 {
-    // ── Static brushes (shared across all items) ──
+    // ── Heat-map brushes: dark = amber/orange, light = blue ──
     private static readonly SolidColorBrush TransparentBrush = new(Colors.Transparent);
-    private static readonly SolidColorBrush LowBrush = new(Color.FromArgb(30, 255, 185, 60));     // faint amber
-    private static readonly SolidColorBrush MedBrush = new(Color.FromArgb(60, 255, 150, 30));      // amber
-    private static readonly SolidColorBrush HighBrush = new(Color.FromArgb(90, 255, 100, 20));     // orange
-    private static readonly SolidColorBrush VeryHighBrush = new(Color.FromArgb(120, 230, 60, 20)); // red-orange
+
+    // ── App icon color tiles (matches real app brand colors) ──
+    private static readonly Dictionary<string, SolidColorBrush> _iconColors = new()
+    {
+        ["Calendar"]                       = new(Color.FromArgb(255,   0, 120, 212)),
+        ["Files"]                          = new(Color.FromArgb(255, 255, 140,   0)),
+        ["Microsoft Edge"]                 = new(Color.FromArgb(255,   0,  90, 158)),
+        ["Microsoft Excel"]                = new(Color.FromArgb(255,  33, 115,  70)),
+        ["Microsoft OneNote"]              = new(Color.FromArgb(255, 128,  57, 123)),
+        ["Microsoft Teams"]                = new(Color.FromArgb(255,  98, 100, 167)),
+        ["Microsoft Visual Studio 2022"]   = new(Color.FromArgb(255,  92,  45, 145)),
+        ["Microsoft Word"]                 = new(Color.FromArgb(255,  43,  87, 154)),
+        ["MUXControlsTestApp"]             = new(Color.FromArgb(255,   0, 120, 212)),
+        ["Notepad.exe"]                    = new(Color.FromArgb(255, 255, 185,   0)),
+        ["Outlook"]                        = new(Color.FromArgb(255,   0, 114, 198)),
+        ["Photos"]                         = new(Color.FromArgb(255,   0, 153, 204)),
+        ["Snipping Tool"]                  = new(Color.FromArgb(255,   0, 120, 212)),
+        ["Task Manager"]                   = new(Color.FromArgb(255,   0, 153, 188)),
+        ["Xbox"]                           = new(Color.FromArgb(255,  16, 124,  16)),
+        ["Desktop Window Manager"]         = new(Color.FromArgb(255,   0, 120, 212)),
+        ["Search Host"]                    = new(Color.FromArgb(255,   0, 120, 212)),
+        ["Windows Explorer"]               = new(Color.FromArgb(255, 255, 185,   0)),
+        ["Antimalware Service Executable"] = new(Color.FromArgb(255,   0, 153,  76)),
+    };
+    private static readonly SolidColorBrush _defaultAppBrush = new(Color.FromArgb(255, 100, 100, 190));
+    private static readonly SolidColorBrush _defaultSysBrush = new(Color.FromArgb(255, 120, 120, 130));
+
+    // Dark theme: yellow → amber → orange → deep red (matches Win11 TM heat-map)
+    private static readonly SolidColorBrush DarkLow =      new(Color.FromArgb(45,  255, 210,  60));
+    private static readonly SolidColorBrush DarkMed =      new(Color.FromArgb(85,  255, 165,  20));
+    private static readonly SolidColorBrush DarkHigh =     new(Color.FromArgb(130, 255, 110,   0));
+    private static readonly SolidColorBrush DarkVeryHigh = new(Color.FromArgb(180, 230,  40,   0));
+
+    // Light theme: blue tints (pale → saturated blue)
+    private static readonly SolidColorBrush LightLow =      new(Color.FromArgb(35,  60, 140, 230));
+    private static readonly SolidColorBrush LightMed =      new(Color.FromArgb(70,  40, 120, 215));
+    private static readonly SolidColorBrush LightHigh =     new(Color.FromArgb(110, 30, 100, 200));
+    private static readonly SolidColorBrush LightVeryHigh = new(Color.FromArgb(155, 20,  80, 190));
+
+    internal static bool IsDarkTheme { get; set; } = true;
+
+    private static SolidColorBrush Low => IsDarkTheme ? DarkLow : LightLow;
+    private static SolidColorBrush Med => IsDarkTheme ? DarkMed : LightMed;
+    private static SolidColorBrush High => IsDarkTheme ? DarkHigh : LightHigh;
+    private static SolidColorBrush VeryHigh => IsDarkTheme ? DarkVeryHigh : LightVeryHigh;
 
     // ── Identity ──
     public string Name { get; set; } = string.Empty;
+    public string DisplayName => Children is { Count: > 0 } ? $"{Name} ({Children.Count})" : Name;
     public string Category { get; set; } = string.Empty;
     public string IconGlyph { get; set; } = "\uE7BA";
     public string IconPath { get; set; } = string.Empty;
+    public Brush IconBackground =>
+        _iconColors.TryGetValue(Name, out var b) ? b :
+        Category == "Apps" ? _defaultAppBrush : _defaultSysBrush;
 
     // ── Visibility helpers for icon/glyph ──
     public Visibility HasIcon => string.IsNullOrEmpty(IconPath) ? Visibility.Collapsed : Visibility.Visible;
@@ -653,14 +864,25 @@ public sealed class ProcessItem : INotifyPropertyChanged
     public Visibility HasStatusText => string.IsNullOrEmpty(StatusText) ? Visibility.Collapsed : Visibility.Visible;
     public Visibility IsEfficiencyMode => IsEfficiency ? Visibility.Visible : Visibility.Collapsed;
 
+    public bool IsSuspended { get; set; }
+    public Visibility IsSuspendedVisibility => IsSuspended ? Visibility.Visible : Visibility.Collapsed;
+
     // ── Hierarchy ──
     public bool IsExpanded { get; set; }
+    public bool IsChild { get; set; }
     public List<ProcessItem> Children { get; set; } = [];
+
+    // Name cell: children are indented with a plain icon; parents get the colored brand tile
+    public Thickness NameIndentMargin => IsChild ? new Thickness(20, 0, 0, 0) : new Thickness(0);
+    public Visibility ParentIconVisibility => IsChild ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility ChildIconVisibility  => IsChild ? Visibility.Visible   : Visibility.Collapsed;
 
     // ── Behavioral hints (for simulation) ──
     public bool IsHighCpu { get; set; }
     public bool IsHighDisk { get; set; }
     public bool IsHighNetwork { get; set; }
+    public bool IsHighGpu { get; set; }
+    public string GpuEngine { get; set; } = string.Empty;
     public double MemoryBaseline { get; set; } = 10;
 
     // ── Live stats ──
@@ -692,6 +914,27 @@ public sealed class ProcessItem : INotifyPropertyChanged
         set { if (SetField(ref _networkMbps, value)) { OnPropertyChanged(nameof(NetworkDisplay)); OnPropertyChanged(nameof(NetworkBackground)); } }
     }
 
+    private double _gpuPercent;
+    public double GpuPercent
+    {
+        get => _gpuPercent;
+        set { if (SetField(ref _gpuPercent, value)) { OnPropertyChanged(nameof(GpuDisplay)); OnPropertyChanged(nameof(GpuBackground)); } }
+    }
+
+    private string _powerUsage = "Very low";
+    public string PowerUsage
+    {
+        get => _powerUsage;
+        set { if (SetField(ref _powerUsage, value)) OnPropertyChanged(nameof(PowerUsageBackground)); }
+    }
+
+    private string _powerUsageTrend = "Very low";
+    public string PowerUsageTrend
+    {
+        get => _powerUsageTrend;
+        set { if (SetField(ref _powerUsageTrend, value)) OnPropertyChanged(nameof(PowerUsageTrendBackground)); }
+    }
+
     // ── Display strings (Task Manager formatting) ──
     public string CpuDisplay => CpuPercent < 0.05 ? "0%" : $"{CpuPercent:F1}%";
 
@@ -707,42 +950,70 @@ public sealed class ProcessItem : INotifyPropertyChanged
 
     public string DiskDisplay => DiskMBps < 0.05 ? "0 MB/s" : $"{DiskMBps:F1} MB/s";
     public string NetworkDisplay => NetworkMbps < 0.05 ? "0 Mbps" : $"{NetworkMbps:F1} Mbps";
+    public string GpuDisplay => GpuPercent < 0.05 ? "0%" : $"{GpuPercent:F1}%";
 
-    // ── Heat-map backgrounds (amber → orange → red based on intensity) ──
+    // ── Heat-map backgrounds ──
     public Brush CpuBackground => CpuPercent switch
     {
-        > 10 => VeryHighBrush,
-        > 5 => HighBrush,
-        > 2 => MedBrush,
-        > 0.5 => LowBrush,
+        > 20 => VeryHigh,
+        > 10 => High,
+        > 5 => Med,
+        > 1 => Low,
         _ => TransparentBrush
     };
 
     public Brush MemoryBackground => MemoryMB switch
     {
-        > 1000 => VeryHighBrush,
-        > 500 => HighBrush,
-        > 200 => MedBrush,
-        > 50 => LowBrush,
+        > 2000 => VeryHigh,
+        > 1000 => High,
+        > 500 => Med,
+        > 100 => Low,
         _ => TransparentBrush
     };
 
     public Brush DiskBackground => DiskMBps switch
     {
-        > 5 => VeryHighBrush,
-        > 2 => HighBrush,
-        > 0.5 => MedBrush,
-        > 0.1 => LowBrush,
+        > 10 => VeryHigh,
+        > 5 => High,
+        > 2 => Med,
+        > 0.5 => Low,
         _ => TransparentBrush
     };
 
     public Brush NetworkBackground => NetworkMbps switch
     {
-        > 5 => VeryHighBrush,
-        > 1 => HighBrush,
-        > 0.3 => MedBrush,
-        > 0.05 => LowBrush,
+        > 10 => VeryHigh,
+        > 5 => High,
+        > 1 => Med,
+        > 0.3 => Low,
         _ => TransparentBrush
+    };
+
+    public Brush GpuBackground => GpuPercent switch
+    {
+        > 20 => VeryHigh,
+        > 10 => High,
+        > 5  => Med,
+        > 1  => Low,
+        _    => TransparentBrush
+    };
+
+    public Brush PowerUsageBackground => PowerUsage switch
+    {
+        "Very high" => VeryHigh,
+        "High"      => High,
+        "Moderate"  => Med,
+        "Low"       => Low,
+        _           => TransparentBrush
+    };
+
+    public Brush PowerUsageTrendBackground => PowerUsageTrend switch
+    {
+        "Very high" => VeryHigh,
+        "High"      => High,
+        "Moderate"  => Med,
+        "Low"       => Low,
+        _           => TransparentBrush
     };
 
     // ── INotifyPropertyChanged ──

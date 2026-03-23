@@ -430,6 +430,28 @@ public partial class TableViewCell : ContentControl
         e.Handled = true;
     }
 
+    /// <inheritdoc/>
+    protected override void OnPointerMoved(PointerRoutedEventArgs e)
+    {
+        if (IsTreeExpanderInteraction(e.OriginalSource))
+        {
+            base.OnPointerMoved(e);
+            return;
+        }
+
+        base.OnPointerMoved(e);
+
+        if (TableView is not null && e.Pointer.IsInContact)
+        {
+            var point = e.GetCurrentPoint(this).Position;
+            var canvasPoint = TransformPointToCanvas(point);
+            if (canvasPoint.HasValue)
+            {
+                TableView.UpdateDragRectangle(canvasPoint.Value);
+            }
+        }
+    }
+
     private bool IsTreeExpanderInteraction(object? originalSource)
     {
         if (_treeExpanderButton is null || originalSource is not DependencyObject source)

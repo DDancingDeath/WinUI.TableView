@@ -637,13 +637,26 @@ Background="{ThemeResource FileExplorerBackgroundBrush}">
                                     SelectionChanged="FileTableView_SelectionChanged">
 
                     <tableView:TableView.Columns>
-                        <!-- Name Column with Icon -->
-                        <tableView:TableViewTemplateColumn Header="Name" 
-                                                          Width="300"
-                                                          CanSort="False"
-                                                          Tag="Name"
-                                                          HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}"
-                                                          CellTemplate="{StaticResource NameColumnTemplate}" />
+                          <!-- Name Column with Icon - Editable -->
+                          <tableView:TableViewTemplateColumn Header="Name" 
+                                                            Width="300"
+                                                            CanSort="False"
+                                                            IsReadOnly="False"
+                                                            Tag="Name"
+                                                            HeaderStyle="{StaticResource FileExplorerTableViewColumnHeaderStyle}"
+                                                            CellTemplate="{StaticResource NameColumnTemplate}">
+                              <tableView:TableViewTemplateColumn.EditingTemplate>
+                                  <DataTemplate>
+                                      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                          <Image Width="16" Height="16" Source="{Binding IconPathKey}" />
+                                          <TextBox Text="{Binding Name, Mode=TwoWay}" 
+                                                  BorderThickness="0"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Stretch" />
+                                      </StackPanel>
+                                  </DataTemplate>
+                              </tableView:TableViewTemplateColumn.EditingTemplate>
+                          </tableView:TableViewTemplateColumn>
 
                         <!-- Date Modified Column -->
                         <tableView:TableViewTemplateColumn Header="Date modified"

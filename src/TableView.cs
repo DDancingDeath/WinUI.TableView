@@ -239,6 +239,25 @@ public partial class TableView : ListView
         await HandleNavigations(e, shiftKey, ctrlKey);
     }
 
+    /// <inheritdoc/>
+    protected override void OnPointerPressed(PointerRoutedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+
+        // Clear selection when clicking in empty area (not on any row)
+        if (e.OriginalSource is FrameworkElement element)
+        {
+            // Check if the click is on the background or empty area (not on a row or cell)
+            var row = element.FindAscendant<TableViewRow>();
+            if (row is null && !e.Handled)
+            {
+                // Click was in empty area, clear selection
+                DeselectAll();
+                CurrentCellSlot = null;
+            }
+        }
+    }
+
     /// <summary>
     /// Handles navigation keys.
     /// </summary>

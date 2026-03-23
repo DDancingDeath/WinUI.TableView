@@ -327,7 +327,8 @@ public partial class TableViewCell : ContentControl
 
         if ((TableView?.SelectionMode is not ListViewSelectionMode.None
            && TableView?.SelectionUnit is not TableViewSelectionUnit.Row)
-           || !TableView.IsReadOnly)
+           || !TableView.IsReadOnly
+           || (TableView?.SelectionUnit is TableViewSelectionUnit.Row && !IsReadOnly))
         {
             VisualStates.GoToState(this, false, VisualStates.StatePointerOver);
         }
@@ -340,7 +341,8 @@ public partial class TableViewCell : ContentControl
 
         if ((TableView?.SelectionMode is not ListViewSelectionMode.None
             && TableView?.SelectionUnit is not TableViewSelectionUnit.Row)
-            || !TableView.IsReadOnly)
+            || !TableView.IsReadOnly
+            || (TableView?.SelectionUnit is TableViewSelectionUnit.Row && !IsReadOnly))
         {
             VisualStates.GoToState(this, false, VisualStates.StateNormal);
         }
@@ -390,6 +392,17 @@ public partial class TableViewCell : ContentControl
             TableView.SelectionStartCellSlot = TableView.SelectionUnit is not TableViewSelectionUnit.Row || !IsReadOnly ? Slot : default; ;
             TableView.SelectionStartRowIndex = Index;
             CapturePointer(e.Pointer);
+
+            // Only start drag rectangle when cell selection is possible
+            if (TableView.SelectionStartCellSlot.HasValue && TableView.SelectionStartCellSlot.Value.IsValid(TableView))
+            {
+                var point = e.GetCurrentPoint(this).Position;
+                var canvasPoint = TransformPointToCanvas(point);
+                if (canvasPoint.HasValue)
+                {
+                    TableView.StartDragRectangle(canvasPoint.Value);
+                }
+            }
         }
     }
 
@@ -411,6 +424,7 @@ public partial class TableViewCell : ContentControl
             TableView.SelectionStartRowIndex = cell?.Slot.Row;
         }
 
+        TableView?.EndDragRectangle();
         ReleasePointerCaptures();
 
         e.Handled = true;
@@ -428,18 +442,36 @@ public partial class TableViewCell : ContentControl
     }
 
     /// <inheritdoc/>
+    protected override void OnPointerCaptureLost(PointerRoutedEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+
+        TableView?.EndDragRectangle();
+    }
+
+    /// <inheritdoc/>
     protected override void OnManipulationDelta(ManipulationDeltaRoutedEventArgs e)
     {
         base.OnManipulationDelta(e);
 
         if (PointerCaptures?.Any() is true)
         {
-            var cell = FindCell(e.Position);
-
-            if (cell is not null && cell.Slot != TableView?.CurrentCellSlot)
+            var canvasPoint = TransformPointToCanvas(e.Position);
+            if (canvasPoint.HasValue)
             {
-                var ctrlKey = KeyboardHelper.IsCtrlKeyDown();
-                TableView?.MakeSelection(cell.Slot, true, ctrlKey);
+                TableView?.UpdateDragRectangle(canvasPoint.Value);
+            }
+
+            // When drag rectangle is active, it handles selection via SelectCellsInDragRectangle
+            if (TableView?._isDragging is not true)
+            {
+                var cell = FindCell(e.Position);
+
+                if (cell is not null && cell.Slot != TableView?.CurrentCellSlot)
+                {
+                    var ctrlKey = KeyboardHelper.IsCtrlKeyDown();
+                    TableView?.MakeSelection(cell.Slot, true, ctrlKey);
+                }
             }
         }
     }
@@ -472,6 +504,24 @@ public partial class TableViewCell : ContentControl
 #endif
                                .OfType<TableViewCell>()
                                .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Transforms a point relative to this cell to coordinates relative to the drag rectangle canvas.
+    /// </summary>
+    private Point? TransformPointToCanvas(Point position)
+    {
+        if (TableView?._dragRectangleCanvas is null) return null;
+
+        try
+        {
+            var transform = TransformToVisual(TableView._dragRectangleCanvas);
+            return transform.TransformPoint(position);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <inheritdoc/>

@@ -20,6 +20,20 @@
         <ApplicationManifest>app.manifest</ApplicationManifest>
     </PropertyGroup>
     <ItemGroup>
+      <Content Include="Assets\Icons\application.svg" />
+      <Content Include="Assets\Icons\archive.svg" />
+      <Content Include="Assets\Icons\audio.svg" />
+      <Content Include="Assets\Icons\code.svg" />
+      <Content Include="Assets\Icons\document.svg" />
+      <Content Include="Assets\Icons\excel.svg" />
+      <Content Include="Assets\Icons\file.svg" />
+      <Content Include="Assets\Icons\folder.svg" />
+      <Content Include="Assets\Icons\image.svg" />
+      <Content Include="Assets\Icons\pdf.svg" />
+      <Content Include="Assets\Icons\video.svg" />
+      <Content Include="Assets\Icons\xml.svg" />
+    </ItemGroup>
+    <ItemGroup>
       <Page Remove="Styles\ColumnHeaderStyles.xaml" />
     </ItemGroup>
 

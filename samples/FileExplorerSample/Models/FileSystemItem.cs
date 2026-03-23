@@ -166,6 +166,49 @@ public class FileSystemItem : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// Gets the icon path resource key for the item based on its type (for SVG path icons).
+    /// </summary>
+    public string IconPathKey
+    {
+        get
+        {
+            if (IsFolder)
+                return "ms-appx:///Assets/Icons/folder.svg";
+
+            // File icons based on extension
+            var extension = System.IO.Path.GetExtension(Name).ToLowerInvariant();
+            return extension switch
+            {
+                ".txt" or ".doc" or ".docx" => "ms-appx:///Assets/Icons/document.svg",
+                ".xls" or ".xlsx" => "ms-appx:///Assets/Icons/excel.svg",
+                ".pdf" => "ms-appx:///Assets/Icons/pdf.svg",
+                ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" => "ms-appx:///Assets/Icons/image.svg",
+                ".mp3" or ".wav" or ".wma" => "ms-appx:///Assets/Icons/audio.svg",
+                ".mp4" or ".avi" or ".mkv" => "ms-appx:///Assets/Icons/video.svg",
+                ".zip" or ".rar" or ".7z" => "ms-appx:///Assets/Icons/archive.svg",
+                ".exe" => "ms-appx:///Assets/Icons/application.svg",
+                ".cs" => "ms-appx:///Assets/Icons/code.svg",
+                ".xaml" or ".xml" => "ms-appx:///Assets/Icons/xml.svg",
+                _ => "ms-appx:///Assets/Icons/file.svg"
+            };
+        }
+    }
+
+    /// <summary>
+    /// Gets the icon color for the item (folders are orange-brown, files are gray).
+    /// </summary>
+    public string IconColor
+    {
+        get
+        {
+            if (IsFolder)
+                return "#FFCA5010"; // Windows Explorer folder color (orange-brown)
+            
+            return "#605E5C"; // Subtle gray for files
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)

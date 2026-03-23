@@ -143,13 +143,63 @@ public class FileSystemService
     {
         return new List<LocationItem>
         {
-            new LocationItem { Name = "Desktop", Path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop), IconGlyph = "\uE8FC" },
-            new LocationItem { Name = "Documents", Path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), IconGlyph = "\uE8A5" },
-            new LocationItem { Name = "Downloads", Path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"), IconGlyph = "\uE896" },
-            new LocationItem { Name = "Pictures", Path = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), IconGlyph = "\uEB9F" },
-            new LocationItem { Name = "Music", Path = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), IconGlyph = "\uE8D6" },
-            new LocationItem { Name = "Videos", Path = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), IconGlyph = "\uE8B2" },
+            new LocationItem { Name = "Desktop", Path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop), IconGlyph = "\uE8FC", IconPathKey = "ms-appx:///Assets/Icons/folder.svg" },
+            new LocationItem { Name = "Documents", Path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), IconGlyph = "\uE8A5", IconPathKey = "ms-appx:///Assets/Icons/document.svg" },
+            new LocationItem { Name = "Downloads", Path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"), IconGlyph = "\uE896", IconPathKey = "ms-appx:///Assets/Icons/archive.svg" },
+            new LocationItem { Name = "Pictures", Path = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), IconGlyph = "\uEB9F", IconPathKey = "ms-appx:///Assets/Icons/image.svg" },
+            new LocationItem { Name = "Music", Path = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), IconGlyph = "\uE8D6", IconPathKey = "ms-appx:///Assets/Icons/audio.svg" },
+            new LocationItem { Name = "Videos", Path = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), IconGlyph = "\uE8B2", IconPathKey = "ms-appx:///Assets/Icons/video.svg" },
         };
+    }
+
+    /// <summary>
+    /// Gets a list of available drives on the system.
+    /// </summary>
+    /// <returns>A list of drives.</returns>
+    public List<LocationItem> GetDrives()
+    {
+        var drives = new List<LocationItem>();
+        
+        try
+        {
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                try
+                {
+                    if (drive.IsReady)
+                    {
+                        var driveName = string.IsNullOrEmpty(drive.VolumeLabel)
+                            ? $"Local Disk ({drive.Name.TrimEnd('\\')})"
+                            : $"{drive.VolumeLabel} ({drive.Name.TrimEnd('\\')})"; 
+                        
+                        drives.Add(new LocationItem
+                        {
+                            Name = driveName,
+                            Path = drive.RootDirectory.FullName,
+                            IconGlyph = "\uEDA2",
+                            IconPathKey = "ms-appx:///Assets/Icons/drive.svg"
+                        });
+                    }
+                }
+                catch
+                {
+                    // Skip drives we don't have access to
+                }
+            }
+        }
+        catch
+        {
+            // Fallback to C: if we can't enumerate drives
+            drives.Add(new LocationItem
+            {
+                Name = "Local Disk (C:)",
+                Path = "C:\\",
+                IconGlyph = "\uEDA2",
+                IconPathKey = "ms-appx:///Assets/Icons/drive.svg"
+            });
+        }
+        
+        return drives;
     }
 }
 
@@ -172,4 +222,9 @@ public class LocationItem
     /// Gets or sets the icon glyph for the location.
     /// </summary>
     public string IconGlyph { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the icon path key for the location (for colorful SVG icons).
+    /// </summary>
+    public string IconPathKey { get; set; } = string.Empty;
 }

@@ -48,6 +48,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
 
         FileItems = new ObservableCollection<FileSystemItem>();
         Locations = new ObservableCollection<LocationItem>(_fileSystemService.GetCommonLocations());
+        Drives = new ObservableCollection<LocationItem>(_fileSystemService.GetDrives());
 
         Loaded += MainPage_Loaded;
     }
@@ -61,6 +62,11 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
     /// Gets the collection of quick access locations.
     /// </summary>
     public ObservableCollection<LocationItem> Locations { get; }
+
+    /// <summary>
+    /// Gets the collection of available drives.
+    /// </summary>
+    public ObservableCollection<LocationItem> Drives { get; }
 
     /// <summary>
     /// Gets or sets the current directory path.
@@ -309,11 +315,11 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         }
     }
 
-    private void DriveButton_Click(object sender, RoutedEventArgs e)
+    private void DrivesListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (sender is Button button && button.Tag is string drivePath)
+        if (DrivesListView.SelectedItem is LocationItem drive)
         {
-            NavigateTo(drivePath);
+            NavigateTo(drive.Path);
         }
     }
 

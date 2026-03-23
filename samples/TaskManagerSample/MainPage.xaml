@@ -81,31 +81,6 @@
                            VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
             </Border>
         </DataTemplate>
-
-        <!-- GPU cell with heat-map background -->
-        <DataTemplate x:Key="GpuCellTemplate">
-            <Border Background="{Binding GpuBackground}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                <TextBlock Text="{Binding GpuDisplay}" FontSize="12"
-                           VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
-            </Border>
-        </DataTemplate>
-
-        <!-- GPU Engine cell -->
-        <DataTemplate x:Key="GpuEngineCellTemplate">
-            <TextBlock Text="{Binding GpuEngine}" FontSize="12" VerticalAlignment="Center"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       TextTrimming="CharacterEllipsis" />
-        </DataTemplate>
-
-        <!-- Power Usage cell — plain text, no heat-map (matches real Task Manager) -->
-        <DataTemplate x:Key="PowerUsageCellTemplate">
-            <TextBlock Text="{Binding PowerUsage}" FontSize="12" VerticalAlignment="Center" />
-        </DataTemplate>
-
-        <!-- Power Usage Trend cell — plain text, no heat-map -->
-        <DataTemplate x:Key="PowerUsageTrendCellTemplate">
-            <TextBlock Text="{Binding PowerUsageTrend}" FontSize="12" VerticalAlignment="Center" />
-        </DataTemplate>
     </Page.Resources>
 
     <Grid>
@@ -342,22 +317,6 @@
                         CellTemplate="{StaticResource NetworkCellTemplate}"
                         MinWidth="75" Width="90"
                         CanSort="True" SortMemberPath="NetworkMbps" />
-                    <tableView:TableViewTemplateColumn x:Name="GpuColumn" Header="GPU"
-                        CellTemplate="{StaticResource GpuCellTemplate}"
-                        MinWidth="60" Width="75"
-                        CanSort="True" SortMemberPath="GpuPercent" />
-                    <tableView:TableViewTemplateColumn Header="GPU engine"
-                        CellTemplate="{StaticResource GpuEngineCellTemplate}"
-                        MinWidth="100" Width="130"
-                        CanSort="False" />
-                    <tableView:TableViewTemplateColumn Header="Power usage"
-                        CellTemplate="{StaticResource PowerUsageCellTemplate}"
-                        MinWidth="90" Width="105"
-                        CanSort="True" SortMemberPath="PowerUsage" />
-                    <tableView:TableViewTemplateColumn Header="Power usage trend"
-                        CellTemplate="{StaticResource PowerUsageTrendCellTemplate}"
-                        MinWidth="110" Width="130"
-                        CanSort="True" SortMemberPath="PowerUsageTrend" />
                 </tableView:TableView.Columns>
             </tableView:TableView>
 
@@ -390,12 +349,6 @@
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                    VerticalAlignment="Center" />
                         <TextBlock x:Name="StatusNetText" Text="0 Kbps" FontSize="11" VerticalAlignment="Center" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                        <TextBlock Text="GPU 0" FontSize="11"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   VerticalAlignment="Center" />
-                        <TextBlock x:Name="StatusGpuText" Text="0%" FontSize="11" VerticalAlignment="Center" />
                     </StackPanel>
                 </StackPanel>
             </Border>

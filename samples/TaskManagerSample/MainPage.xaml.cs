@@ -14,7 +14,7 @@ public partial class MainPage : Page
     private readonly DispatcherTimer _timer;
     private readonly Random _rng = new();
     private readonly List<ProcessItem> _allProcesses = [];
-    private TextBlock? _cpuHeaderPct, _memHeaderPct, _diskHeaderPct, _netHeaderPct, _gpuHeaderPct;
+    private TextBlock? _cpuHeaderPct, _memHeaderPct, _diskHeaderPct, _netHeaderPct;
 
     public ObservableCollection<ProcessItem> Processes { get; } = [];
 
@@ -88,27 +88,24 @@ public partial class MainPage : Page
         MemoryColumn.Header = CreateHeaderContent("Memory", out _memHeaderPct);
         DiskColumn.Header = CreateHeaderContent("Disk", out _diskHeaderPct);
         NetworkColumn.Header = CreateHeaderContent("Network", out _netHeaderPct);
-        GpuColumn.Header = CreateHeaderContent("GPU", out _gpuHeaderPct);
         UpdateHeaderSummary();
     }
 
     private void UpdateHeaderSummary()
     {
-        double totalCpu = 0, totalMem = 0, totalDisk = 0, totalNet = 0, totalGpu = 0;
+        double totalCpu = 0, totalMem = 0, totalDisk = 0, totalNet = 0;
         foreach (var p in Processes)
         {
             totalCpu += p.CpuPercent;
             totalMem += p.MemoryMB;
             totalDisk += p.DiskMBps;
             totalNet += p.NetworkMbps;
-            totalGpu += p.GpuPercent;
         }
 
         if (_cpuHeaderPct is not null) _cpuHeaderPct.Text = $"{Math.Min(totalCpu, 100):F0}%";
         if (_memHeaderPct is not null) _memHeaderPct.Text = $"{totalMem / 1024 / 16 * 100:F0}%";
         if (_diskHeaderPct is not null) _diskHeaderPct.Text = $"{Math.Min(totalDisk, 100):F0}%";
         if (_netHeaderPct is not null) _netHeaderPct.Text = $"{Math.Min(totalNet, 100):F0}%";
-        if (_gpuHeaderPct is not null) _gpuHeaderPct.Text = $"{Math.Min(totalGpu, 100):F0}%";
 
         // Bottom status bar
         StatusCpuText.Text = $"{Math.Min(totalCpu, 100):F0}%";
@@ -119,7 +116,6 @@ public partial class MainPage : Page
         StatusNetText.Text = totalNet >= 1.0 ? $"{totalNet:F1} Mbps"
                            : totalNet > 0.001 ? $"{totalNet * 1000:F0} Kbps"
                            : "0 Kbps";
-        StatusGpuText.Text = $"{Math.Min(totalGpu, 100):F0}%";
     }
 
     private void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
@@ -168,51 +164,25 @@ public partial class MainPage : Page
         // Network
         var netBase = p.IsHighNetwork ? _rng.NextDouble() * 1.5 : _rng.NextDouble() * 0.2;
         p.NetworkMbps = Math.Round(netBase, 1);
-
-        // GPU
-        var gpuBase = p.IsHighGpu ? _rng.NextDouble() * 20 + 3 : _rng.NextDouble() * 0.8;
-        p.GpuPercent = Math.Round(gpuBase, 1);
-
-        // Power usage derived from combined resource load
-        var powerScore = p.CpuPercent * 2.5 + p.MemoryMB / 600.0 + p.GpuPercent * 1.5;
-        p.PowerUsage = powerScore switch
-        {
-            > 50 => "Very high",
-            > 30 => "High",
-            > 15 => "Moderate",
-            > 5  => "Low",
-            _    => "Very low"
-        };
-        var trendScore = powerScore * (_rng.NextDouble() * 0.3 + 0.85);
-        p.PowerUsageTrend = trendScore switch
-        {
-            > 50 => "Very high",
-            > 30 => "High",
-            > 15 => "Moderate",
-            > 5  => "Low",
-            _    => "Very low"
-        };
     }
 
     private void AggregateFromChildren(ProcessItem parent)
     {
         if (parent.Children is not { Count: > 0 }) return;
 
-        double cpu = 0, mem = 0, disk = 0, net = 0, gpu = 0;
+        double cpu = 0, mem = 0, disk = 0, net = 0;
         foreach (var c in parent.Children)
         {
             cpu += c.CpuPercent;
             mem += c.MemoryMB;
             disk += c.DiskMBps;
             net += c.NetworkMbps;
-            gpu += c.GpuPercent;
         }
 
         parent.CpuPercent = Math.Round(cpu, 1);
         parent.MemoryMB = Math.Round(mem, 1);
         parent.DiskMBps = Math.Round(disk, 1);
         parent.NetworkMbps = Math.Round(net, 1);
-        parent.GpuPercent = Math.Round(gpu, 1);
     }
 
     private FilterDescription? _searchFilter;

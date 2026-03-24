@@ -1,7 +1,10 @@
 <Solution>
   <Folder Name="/samples/">
     <Project Path="samples/TableViewNuGetSample/TableViewNuGetSample.csproj">
-      <Platform Project="x86" />
+      <Platform Project="x86" />`n      <Deploy />
+    </Project>
+    <Project Path="samples/TaskManagerSample/TaskManagerSample.csproj">
+      <Platform Project="x86" />`n      <Deploy />
     </Project>
   </Folder>
   <Project Path="src/WinUI.TableView.csproj" />
@@ -10,3 +13,4 @@
     <Deploy />
   </Project>
 </Solution>
+

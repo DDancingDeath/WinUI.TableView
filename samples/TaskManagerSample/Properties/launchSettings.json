@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TaskManagerSample (Unpackaged)": {
+      "commandName": "Project"
+    },
+    "TaskManagerSample (Package)": {
+      "commandName": "MsixPackage"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "solution": {
+    "path": "FileExplorerSample.sln",
+    "projects": [
+      "FileExplorerSample.csproj",
+      "..\\..\\src\\WinUI.TableView.csproj"
+    ]
+  }
+}

@@ -336,6 +336,11 @@ public partial class TableView
     public static readonly DependencyProperty RowTemplateSelectorProperty = DependencyProperty.Register(nameof(RowTemplateSelector), typeof(DataTemplateSelector), typeof(TableView), new PropertyMetadata(null, OnRowTemplateChanged));
 
     /// <summary>
+    /// Identifies the <see cref="ShowDragRectangle"/> dependency property.
+    /// </summary>
+    public static readonly DependencyProperty ShowDragRectangleProperty = DependencyProperty.Register(nameof(ShowDragRectangle), typeof(bool), typeof(TableView), new PropertyMetadata(true));
+
+    /// <summary>
     /// Gets or sets a value indicating whether opening the column filter over header right-click is enabled.
     /// </summary>
     public bool UseRightClickForColumnFilter
@@ -420,6 +425,15 @@ public partial class TableView
     {
         get => (DataTemplateSelector?)GetValue(RowTemplateSelectorProperty);
         set => SetValue(RowTemplateSelectorProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the drag selection rectangle is shown during cell drag selection.
+    /// </summary>
+    public bool ShowDragRectangle
+    {
+        get => (bool)GetValue(ShowDragRectangleProperty);
+        set => SetValue(ShowDragRectangleProperty, value);
     }
 
     /// <summary>

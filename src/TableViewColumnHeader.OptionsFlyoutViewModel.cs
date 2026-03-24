@@ -90,6 +90,12 @@ public partial class TableViewColumnHeader
         private void OnFilterItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             SetSelectAllCheckBoxState();
+            
+            // Auto-apply filter when checkbox changes
+            if (e.PropertyName == nameof(TableViewFilterItem.IsSelected))
+            {
+                ColumnHeader.ApplyFilter();
+            }
         }
 
         /// <summary>

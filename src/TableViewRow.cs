@@ -180,6 +180,17 @@ public partial class TableViewRow : ListViewItem
         if (!KeyboardHelper.IsShiftKeyDown() && TableView is not null)
         {
             TableView.SelectionStartRowIndex = Index;
+            
+            // Start drag rectangle for row selection
+            if (TableView.SelectionMode is ListViewSelectionMode.Multiple or ListViewSelectionMode.Extended)
+            {
+                var point = e.GetCurrentPoint(this).Position;
+                var canvasPoint = TransformPointToCanvas(point);
+                if (canvasPoint.HasValue)
+                {
+                    TableView.StartDragRectangle(canvasPoint.Value);
+                }
+            }
         }
     }
 
@@ -199,6 +210,38 @@ public partial class TableViewRow : ListViewItem
             TableView.SelectionStartCellSlot = null;
             TableView.SelectionStartRowIndex = Index;
         }
+        
+        TableView?.EndDragRectangle();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerMoved(PointerRoutedEventArgs e)
+    {
+        if (TableView?.IsGroupHeaderItem(Content) is true)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        base.OnPointerMoved(e);
+
+        if (TableView is not null && e.Pointer.IsInContact)
+        {
+            var point = e.GetCurrentPoint(this).Position;
+            var canvasPoint = TransformPointToCanvas(point);
+            if (canvasPoint.HasValue)
+            {
+                TableView.UpdateDragRectangle(canvasPoint.Value);
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerCaptureLost(PointerRoutedEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+        
+        TableView?.EndDragRectangle();
     }
 
     /// <inheritdoc/>
@@ -216,6 +259,24 @@ public partial class TableViewRow : ListViewItem
         {
             TableView.CurrentRowIndex = Index;
             TableView.LastSelectionUnit = TableViewSelectionUnit.Row;
+        }
+    }
+
+    /// <summary>
+    /// Transforms a point relative to this row to coordinates relative to the drag rectangle canvas.
+    /// </summary>
+    private Point? TransformPointToCanvas(Point position)
+    {
+        if (TableView?._dragRectangleCanvas is null) return null;
+
+        try
+        {
+            var transform = TransformToVisual(TableView._dragRectangleCanvas);
+            return transform.TransformPoint(position);
+        }
+        catch
+        {
+            return null;
         }
     }
 

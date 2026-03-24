@@ -22,6 +22,9 @@ namespace WinUI.TableView;
 [TemplateVisualState(Name = VisualStates.StateDetailsButtonCollapsed, GroupName = VisualStates.GroupRowDetailsButton)]
 public partial class TableViewRowPresenter : Control
 {
+    private Border? _groupHeaderPanel;
+    private ToggleButton? _groupHeaderToggleButton;
+    private TextBlock? _groupHeaderTextBlock;
     private TableViewRowHeader? _rowHeader;
     private Panel? _rootPanel;
     private StackPanel? _scrollableCellsPanel;
@@ -32,6 +35,9 @@ public partial class TableViewRowPresenter : Control
     private ContentPresenter? _detailsPresenter;
     private ToggleButton? _detailsToggleButton;
     private ListViewItemPresenter? _itemPresenter;
+    private ContentPresenter? _rowTemplatePresenter;
+    private bool _isUpdatingGroupToggle;
+    private bool _rowTemplateColumnsSynced;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TableViewRowPresenter"/> class.
@@ -46,6 +52,9 @@ public partial class TableViewRowPresenter : Control
     {
         base.OnApplyTemplate();
 
+        _groupHeaderPanel = GetTemplateChild("GroupHeaderPanel") as Border;
+        _groupHeaderToggleButton = GetTemplateChild("GroupHeaderToggleButton") as ToggleButton;
+        _groupHeaderTextBlock = GetTemplateChild("GroupHeaderTextBlock") as TextBlock;
         _rowHeader = GetTemplateChild("RowHeader") as TableViewRowHeader;
         _rootPanel = GetTemplateChild("RootPanel") as Panel;
         _scrollableCellsPanel = GetTemplateChild("ScrollableCellsPanel") as StackPanel;
@@ -55,6 +64,7 @@ public partial class TableViewRowPresenter : Control
         _detailsPanel = GetTemplateChild("DetailsPanel") as Panel;
         _detailsPresenter = GetTemplateChild("DetailsPresenter") as ContentPresenter;
         _detailsToggleButton = GetTemplateChild("DetailsToggleButton") as ToggleButton;
+        _rowTemplatePresenter = GetTemplateChild("RowTemplatePresenter") as ContentPresenter;
 
         _itemPresenter = this.FindAscendant<ListViewItemPresenter>();
         TableViewRow = this.FindAscendant<TableViewRow>();
@@ -72,6 +82,14 @@ public partial class TableViewRowPresenter : Control
             _detailsToggleButton.Unchecked += OnDetailsToggleButtonUnChecked;
         }
 
+        if (_groupHeaderToggleButton is not null)
+        {
+            _groupHeaderToggleButton.Checked -= OnGroupHeaderToggleButtonChanged;
+            _groupHeaderToggleButton.Unchecked -= OnGroupHeaderToggleButtonChanged;
+            _groupHeaderToggleButton.Checked += OnGroupHeaderToggleButtonChanged;
+            _groupHeaderToggleButton.Unchecked += OnGroupHeaderToggleButtonChanged;
+        }
+
         if (_detailsPanel is not null)
         {
             _detailsPanel.SizeChanged += (_, _) => TableViewRow?.EnsureLayout();
@@ -79,14 +97,31 @@ public partial class TableViewRowPresenter : Control
                 => TableViewRow?.EnsureLayout());
         }
 
+        if (_rowTemplatePresenter is not null)
+        {
+            _rowTemplatePresenter.SizeChanged += OnRowTemplatePresenterSizeChanged;
+        }
+
         TableViewRow?.EnsureCells();
         EnsureGridLines();
         SetRowHeaderBindings();
         SetRowHeaderVisibility();
         SetRowHeaderTemplate();
+        SetGroupHeaderPresentation();
         SetRowHeaderWidth();
         SetRowDetailsVisibility();
         SetRowDetailsTemplate();
+        SetRowTemplate();
+    }
+
+    private void OnGroupHeaderToggleButtonChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdatingGroupToggle)
+        {
+            return;
+        }
+
+        TableView?.ToggleGroupExpansion(TableViewRow?.Content);
     }
 
     /// <inheritdoc/>
@@ -138,6 +173,18 @@ public partial class TableViewRowPresenter : Control
                     };
             }
 
+            if (_rowTemplatePresenter?.Visibility is Visibility.Visible && _rowTemplatePresenter.ActualWidth > 0)
+            {
+                var templateXScroll = -TableView.HorizontalOffset + _rowTemplatePresenter.ActualOffset.X;
+
+                _rowTemplatePresenter.Arrange(new(templateXScroll, 0, _rowTemplatePresenter.ActualWidth, _rowTemplatePresenter.ActualHeight));
+                _rowTemplatePresenter.Clip = templateXScroll >= _rowTemplatePresenter.ActualOffset.X ? null :
+                    new RectangleGeometry
+                    {
+                        Rect = new(xClip, 0, Math.Max(0, _rowTemplatePresenter.ActualWidth - xClip), _rowTemplatePresenter.ActualHeight)
+                    };
+            }
+
 
             if (_v_gridLine is not null && TableView is not null)
             {
@@ -163,6 +210,12 @@ public partial class TableViewRowPresenter : Control
             _rowHeader.ContentTemplate =
                 TableView.RowHeaderTemplateSelector?.SelectTemplate(TableViewRow?.Content)
                 ?? TableView.RowHeaderTemplate;
+
+            _rowHeader.Content = TableView.RowHeaderTemplate is not null || TableView.RowHeaderTemplateSelector is not null
+                    ? TableViewRow?.Content
+                    : null;
+            _rowHeader.IsHierarchyExpanderVisible = false;
+            _rowHeader.IsHierarchyExpanded = false;
         }
 
         SetRowHeaderVisibility();
@@ -234,6 +287,16 @@ public partial class TableViewRowPresenter : Control
             _detailsPresenter.ContentTemplate =
                 TableView.RowDetailsTemplateSelector?.SelectTemplate(TableViewRow?.Content)
                 ?? TableView.RowDetailsTemplate;
+            
+            // Only set content for non-group-header rows to avoid binding to synthetic GroupHeaderRowItem
+            if (TableView.IsGroupHeaderItem(TableViewRow?.Content) is not true)
+            {
+                _detailsPresenter.Content = TableViewRow?.Content;
+            }
+            else
+            {
+                _detailsPresenter.Content = null;
+            }
         }
     }
 
@@ -267,8 +330,8 @@ public partial class TableViewRowPresenter : Control
             var isDetailsToggleButtonVisible = TableView.RowDetailsVisibilityMode is TableViewRowDetailsVisibilityMode.VisibleWhenExpanded
                                                && (TableView.RowDetailsTemplate is not null || TableView.RowDetailsTemplateSelector is not null);
 
-            if (areHeadersVisible && !isMultiSelection &&
-               (!isDetailsToggleButtonVisible || TableView.RowHeaderTemplate is not null || TableView.RowHeaderTemplateSelector is not null))
+            if ((areHeadersVisible && !isMultiSelection &&
+               (!isDetailsToggleButtonVisible || TableView.RowHeaderTemplate is not null || TableView.RowHeaderTemplateSelector is not null)))
             {
                 _rowHeader.Visibility = Visibility.Visible;
                 SetRowHeaderWidth();
@@ -279,6 +342,38 @@ public partial class TableViewRowPresenter : Control
             }
 
             EnsureGridLines();
+        }
+    }
+
+    internal void SetGroupHeaderPresentation()
+    {
+        var header = string.Empty;
+        var isGroupHeaderItem = TableView?.IsGroupHeaderItem(TableViewRow?.Content) is true;
+        var hasGroupHeader = isGroupHeaderItem && TableView?.TryGetGroupHeader(TableViewRow?.Content, out header) is true;
+
+        if (_groupHeaderPanel is not null)
+        {
+            _groupHeaderPanel.Visibility = hasGroupHeader ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (_groupHeaderTextBlock is not null)
+        {
+            _groupHeaderTextBlock.Text = hasGroupHeader ? header : string.Empty;
+        }
+
+        if (_groupHeaderToggleButton is not null)
+        {
+            _isUpdatingGroupToggle = true;
+            _groupHeaderToggleButton.IsChecked = hasGroupHeader && TableView?.IsGroupExpanded(TableViewRow?.Content) is true;
+            _groupHeaderToggleButton.Visibility = hasGroupHeader ? Visibility.Visible : Visibility.Collapsed;
+            _isUpdatingGroupToggle = false;
+        }
+
+        if (_rootPanel is not null)
+        {
+            _rootPanel.Visibility = TableView?.ShouldShowGroupedItemContent(TableViewRow?.Content) is false
+                ? Visibility.Collapsed
+                : Visibility.Visible;
         }
     }
 
@@ -457,6 +552,113 @@ public partial class TableViewRowPresenter : Control
     /// Gets or sets the TableView associated with the presenter.
     /// </summary>
     public TableView? TableView { get; private set; }
+
+    /// <summary>
+    /// Sets the row template on the row template presenter.
+    /// When a RowTemplate or RowTemplateSelector is set on the TableView,
+    /// the custom content is displayed instead of the column-based cell panels.
+    /// </summary>
+    internal void SetRowTemplate()
+    {
+        if (_rowTemplatePresenter is null || TableView is null) return;
+
+        var template = TableView.RowTemplateSelector?.SelectTemplate(TableViewRow?.Content)
+                       ?? TableView.RowTemplate;
+        var hasRowTemplate = template is not null;
+
+        _rowTemplatePresenter.ContentTemplate = template;
+
+        if (hasRowTemplate && TableView.IsGroupHeaderItem(TableViewRow?.Content) is not true)
+        {
+            _rowTemplatePresenter.Content = TableViewRow?.Content;
+        }
+        else
+        {
+            _rowTemplatePresenter.Content = null;
+        }
+
+        _rowTemplatePresenter.Visibility = hasRowTemplate ? Visibility.Visible : Visibility.Collapsed;
+        _rowTemplateColumnsSynced = false;
+
+        if (_frozenCellsPanel is not null)
+        {
+            _frozenCellsPanel.Visibility = hasRowTemplate ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        if (_scrollableCellsPanel is not null)
+        {
+            _scrollableCellsPanel.Visibility = hasRowTemplate ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        if (hasRowTemplate)
+        {
+            UpdateRowTemplateWidth();
+            SyncRowTemplateColumnWidths();
+        }
+    }
+
+    /// <summary>
+    /// Updates the row template presenter width to match the total width of all visible column headers.
+    /// </summary>
+    internal void UpdateRowTemplateWidth()
+    {
+        if (_rowTemplatePresenter is null || TableView is null) return;
+
+        var totalWidth = TableView.Columns.VisibleColumns.Sum(c => c.ActualWidth);
+
+        if (totalWidth > 0)
+        {
+            _rowTemplatePresenter.Width = totalWidth;
+        }
+
+        SyncRowTemplateColumnWidths();
+    }
+
+    /// <summary>
+    /// Synchronizes the root Grid's ColumnDefinitions inside the row template
+    /// with the ActualWidth of the corresponding TableView columns, so the
+    /// template's layout aligns with the column headers.
+    /// </summary>
+    internal void SyncRowTemplateColumnWidths()
+    {
+        if (_rowTemplatePresenter is null || TableView is null) return;
+
+        var rootGrid = _rowTemplatePresenter.FindDescendant<Grid>();
+        if (rootGrid is null) return;
+
+        var columns = TableView.Columns.VisibleColumns;
+
+        if (rootGrid.ColumnDefinitions.Count != columns.Count)
+        {
+            return;
+        }
+
+        rootGrid.Padding = new Thickness(0);
+        rootGrid.ColumnSpacing = 0;
+
+        for (var i = 0; i < columns.Count; i++)
+        {
+            var actualWidth = columns[i].ActualWidth;
+            if (actualWidth > 0)
+            {
+                rootGrid.ColumnDefinitions[i].Width = new GridLength(actualWidth, GridUnitType.Pixel);
+            }
+        }
+
+        _rowTemplateColumnsSynced = true;
+    }
+
+    /// <summary>
+    /// Handles the SizeChanged event of the row template presenter to sync column widths
+    /// once the template content is realized.
+    /// </summary>
+    private void OnRowTemplatePresenterSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (!_rowTemplateColumnsSynced && _rowTemplatePresenter?.Visibility is Visibility.Visible)
+        {
+            SyncRowTemplateColumnWidths();
+        }
+    }
 
     /// <summary>
     /// Gets a value indicating whether the row details panel is currently visible.

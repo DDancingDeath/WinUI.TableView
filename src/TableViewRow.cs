@@ -132,27 +132,52 @@ public partial class TableViewRow : ListViewItem
     /// <inheritdoc/>
     protected override void OnContentChanged(object oldContent, object newContent)
     {
+        var isGroupHeaderItem = TableView?.IsGroupHeaderItem(newContent) is true;
+
+        // Immediately clear cells and suppress rendering before base.OnContentChanged
+        if (isGroupHeaderItem)
+        {
+            RowPresenter?.ClearCells();
+            _ensureCells = true;
+        }
+
         base.OnContentChanged(oldContent, newContent);
 
-        if (_ensureCells)
+        if (!isGroupHeaderItem)
         {
-            EnsureCells();
-        }
-        else
-        {
-            foreach (var cell in Cells)
+            if (HasRowTemplate)
             {
-                cell.RefreshElement();
+                RowPresenter?.ClearCells();
+                RowPresenter?.SetRowTemplate();
+                _ensureCells = true;
+            }
+            else if (_ensureCells || Cells.Count == 0)
+            {
+                EnsureCells();
+            }
+            else
+            {
+                foreach (var cell in Cells)
+                {
+                    cell.RefreshElement();
+                }
             }
         }
 
         RowPresenter?.InvalidateMeasure(); // The cells presenter does not measure every time.
         _tableView?.EnsureAlternateRowColors();
+        UpdateHierarchyPresentation();
     }
 
     /// <inheritdoc/>
     protected override void OnPointerPressed(PointerRoutedEventArgs e)
     {
+        if (TableView?.IsGroupHeaderItem(Content) is true)
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (TableView is { IsEditing: false })
         {
             base.OnPointerPressed(e);
@@ -167,6 +192,12 @@ public partial class TableViewRow : ListViewItem
     /// <inheritdoc/>
     protected override void OnPointerReleased(PointerRoutedEventArgs e)
     {
+        if (TableView?.IsGroupHeaderItem(Content) is true)
+        {
+            e.Handled = true;
+            return;
+        }
+
         base.OnPointerReleased(e);
 
         if (!KeyboardHelper.IsShiftKeyDown() && TableView is not null)
@@ -179,6 +210,12 @@ public partial class TableViewRow : ListViewItem
     /// <inheritdoc/>
     protected override void OnTapped(TappedRoutedEventArgs e)
     {
+        if (TableView?.IsGroupHeaderItem(Content) is true)
+        {
+            e.Handled = true;
+            return;
+        }
+
         base.OnTapped(e);
 
         if (TableView?.SelectionUnit is TableViewSelectionUnit.Row or TableViewSelectionUnit.CellOrRow)
@@ -191,6 +228,12 @@ public partial class TableViewRow : ListViewItem
     /// <inheritdoc/>
     protected override void OnDoubleTapped(DoubleTappedRoutedEventArgs e)
     {
+        if (TableView?.IsGroupHeaderItem(Content) is true)
+        {
+            e.Handled = true;
+            return;
+        }
+
         var eventArgs = new TableViewRowDoubleTappedEventArgs(Index, this, Content);
         TableView?.OnRowDoubleTapped(eventArgs);
         e.Handled = eventArgs.Handled;
@@ -218,6 +261,20 @@ public partial class TableViewRow : ListViewItem
     {
         if (TableView is null)
         {
+            return;
+        }
+
+        if (TableView.IsGroupHeaderItem(Content))
+        {
+            RowPresenter?.ClearCells();
+            _ensureCells = true;
+            return;
+        }
+
+        if (HasRowTemplate)
+        {
+            RowPresenter?.ClearCells();
+            _ensureCells = true;
             return;
         }
 
@@ -289,7 +346,11 @@ public partial class TableViewRow : ListViewItem
         }
         else if (e.PropertyName is nameof(TableViewColumn.ActualWidth))
         {
-            if (Cells.FirstOrDefault(x => x.Column == e.Column) is { } cell)
+            if (HasRowTemplate)
+            {
+                RowPresenter?.UpdateRowTemplateWidth();
+            }
+            else if (Cells.FirstOrDefault(x => x.Column == e.Column) is { } cell)
             {
                 cell.Width = e.Column.ActualWidth;
             }
@@ -368,7 +429,24 @@ public partial class TableViewRow : ListViewItem
 
                 RowPresenter.InsertCell(cell);
             }
+
+            UpdateHierarchyPresentation();
         }
+    }
+
+    /// <summary>
+    /// Applies hierarchy indentation and grouping visuals for the row.
+    /// </summary>
+    internal void UpdateHierarchyPresentation()
+    {
+        foreach (var cell in Cells)
+        {
+            cell.ApplyHierarchyPresentation();
+        }
+
+        RowPresenter?.SetRowHeaderTemplate();
+        RowPresenter?.SetRowHeaderVisibility();
+        RowPresenter?.SetGroupHeaderPresentation();
     }
 
     /// <summary>
@@ -519,13 +597,6 @@ public partial class TableViewRow : ListViewItem
             selectionIndicator = fontIcon?.Parent as Border;
         }
 
-        if (TableView is ListView { SelectionMode: ListViewSelectionMode.Multiple })
-        {
-            var fontIcon = this.FindDescendant<FontIcon>(x => x.Glyph == Check_Mark);
-            selectionIndicator = fontIcon?.Parent as Border;
-        }
-
-
         _selectionBackground ??= _itemPresenter?.FindDescendants()
                                                 .OfType<Border>()
                                                 .FirstOrDefault(x => x.Name is not Selection_Background && x.Margin == _selectionBackgroundMargin);
@@ -636,6 +707,30 @@ public partial class TableViewRow : ListViewItem
                 _tableView = value;
                 OnTableViewChanged();
             }
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether a row template is active for this row.
+    /// </summary>
+    internal bool HasRowTemplate => TableView?.RowTemplate is not null || TableView?.RowTemplateSelector is not null;
+
+    /// <summary>
+    /// Applies or removes the row template. When a RowTemplate is set on the TableView,
+    /// cells are cleared and the template is used. When removed, cells are regenerated from columns.
+    /// </summary>
+    internal void ApplyRowTemplate()
+    {
+        if (HasRowTemplate)
+        {
+            RowPresenter?.ClearCells();
+            _ensureCells = true;
+        }
+        else
+        {
+            RowPresenter?.SetRowTemplate();
+            _ensureCells = true;
+            EnsureCells();
         }
     }
 

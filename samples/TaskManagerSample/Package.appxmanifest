@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -8,14 +8,14 @@
   IgnorableNamespaces="uap rescap">
 
   <Identity
-    Name="230c2c6d-dc5d-4dea-88b3-87edd86ffa26"
+    Name="a1b2c3d4-task-mgr-sample-0001"
     Publisher="CN=User Name"
     Version="1.0.0.0" />
 
-  <mp:PhoneIdentity PhoneProductId="230c2c6d-dc5d-4dea-88b3-87edd86ffa26" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="a1b2c3d4-task-mgr-sample-0001" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>TableViewNuGetSample</DisplayName>
+    <DisplayName>TaskManagerSample</DisplayName>
     <PublisherDisplayName>User Name</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -34,8 +34,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="TableViewNuGetSample"
-        Description="TableViewNuGetSample"
+        DisplayName="Task Manager"
+        Description="Task Manager Sample using WinUI.TableView"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">

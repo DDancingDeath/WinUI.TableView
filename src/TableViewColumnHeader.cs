@@ -43,6 +43,7 @@ public partial class TableViewColumnHeader : ContentControl
     private OptionsFlyoutViewModel _optionsFlyoutViewModel = default!;
     private bool _resizeStarted;
     private double _resizeStartingWidth;
+    private double _resizeStartingX;
     private bool _resizePreviousStarted;
     private TextBox? _searchBox;
     private double _reorderStartingPosition;
@@ -494,7 +495,33 @@ public partial class TableViewColumnHeader : ContentControl
     {
         base.OnPointerMoved(e);
 
-        if (CanResize && IsCursorInRightResizeArea(e) && !_reorderStarted)
+        if (_resizeStarted && Column is not null && _tableView is not null && _headerRow is not null)
+        {
+            var currentPoint = e.GetCurrentPoint(_headerRow);
+            var deltaX = currentPoint.Position.X - _resizeStartingX;
+            var width = _resizeStartingWidth + deltaX;
+
+            var minWidth = Column.MinWidth ?? _tableView.MinColumnWidth;
+            var maxWidth = Column.MaxWidth ?? _tableView.MaxColumnWidth;
+
+            width = Math.Clamp(width, minWidth, maxWidth);
+            Column.Width = new GridLength(width, GridUnitType.Pixel);
+            e.Handled = true;
+        }
+        else if (_resizePreviousStarted && _headerRow?.GetPreviousHeader(this) is { Column: { } header } && _tableView is not null)
+        {
+            var currentPoint = e.GetCurrentPoint(_headerRow);
+            var deltaX = currentPoint.Position.X - _resizeStartingX;
+            var width = _resizeStartingWidth + deltaX;
+
+            var minWidth = header.MinWidth ?? _tableView.MinColumnWidth;
+            var maxWidth = header.MaxWidth ?? _tableView.MaxColumnWidth;
+
+            width = Math.Clamp(width, minWidth, maxWidth);
+            header.Width = new GridLength(width, GridUnitType.Pixel);
+            e.Handled = true;
+        }
+        else if (CanResize && IsCursorInRightResizeArea(e) && !_reorderStarted)
         {
             ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast);
         }
@@ -513,17 +540,23 @@ public partial class TableViewColumnHeader : ContentControl
     {
         base.OnPointerPressed(e);
 
-        if (IsSizingCursor && CanResize && IsCursorInRightResizeArea(e))
+        if (IsSizingCursor && CanResize && IsCursorInRightResizeArea(e) && _headerRow is not null)
         {
             _resizeStarted = true;
             _resizeStartingWidth = ActualWidth;
+            var point = e.GetCurrentPoint(_headerRow);
+            _resizeStartingX = point.Position.X;
             CapturePointer(e.Pointer);
+            e.Handled = true;
         }
         else if (IsSizingCursor && IsCursorInLeftResizeArea(e) && _headerRow?.GetPreviousHeader(this) is { Column: { } } header)
         {
             _resizePreviousStarted = true;
             _resizeStartingWidth = header.ActualWidth;
+            var point = e.GetCurrentPoint(_headerRow);
+            _resizeStartingX = point.Position.X;
             CapturePointer(e.Pointer);
+            e.Handled = true;
         }
         else if (_tableView?.CanReorderColumns is true && Column?.CanReorder is true)
         {
@@ -601,6 +634,12 @@ public partial class TableViewColumnHeader : ContentControl
     protected override void OnPointerReleased(PointerRoutedEventArgs e)
     {
         base.OnPointerReleased(e);
+        
+        if (_resizeStarted || _resizePreviousStarted)
+        {
+            e.Handled = true;
+        }
+        
         ReleasePointerCaptures();
 
         _resizeStarted = false;

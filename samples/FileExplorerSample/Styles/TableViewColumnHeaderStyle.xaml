@@ -1,26 +1,28 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                    xmlns:local="using:WinUI.TableView"
-                    xmlns:win="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:not_win="http://uno.ui/not_win"
-                    xmlns:converters="using:WinUI.TableView.Converters"
-                    mc:Ignorable="not_win">
+<ResourceDictionary
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+xmlns:local="using:WinUI.TableView"
+xmlns:win="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:not_win="http://uno.ui/not_win"
+mc:Ignorable="not_win">
 
-    <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="ms-appx:///WinUI.TableView/Themes/Resources.xaml" />
-    </ResourceDictionary.MergedDictionaries>
+<ResourceDictionary.MergedDictionaries>
+    <ResourceDictionary Source="ms-appx:///WinUI.TableView/Themes/Resources.xaml" />
+</ResourceDictionary.MergedDictionaries>
 
-    <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+<!-- Override OptionsButtonIcon to use ChevronDown -->
+<x:String x:Key="OptionsButtonIcon">&#xE70D;</x:String>
 
-    <Style x:Key="DefaultTableViewColumnHeaderStyle"
+<!-- File Explorer TableViewColumnHeader Style with Larger Filter Dropdown -->
+    <Style x:Key="FileExplorerTableViewColumnHeaderStyle"
            TargetType="local:TableViewColumnHeader">
         <Setter Property="FontWeight"
                 Value="SemiBold" />
         <Setter Property="BackgroundSizing"
                 Value="InnerBorderEdge" />
         <Setter Property="Foreground"
-                Value="{ThemeResource TableViewHeaderForeground}" />
+                Value="{ThemeResource FileExplorerHeaderTextBrush}" />
         <Setter Property="Padding"
                 Value="12,0" />
         <Setter Property="UseSystemFocusVisuals"
@@ -48,56 +50,41 @@
             <Setter.Value>
                 <ControlTemplate TargetType="local:TableViewColumnHeader">
                     <Grid x:Name="rootGrid">
+                        <Grid.Background>
+                            <SolidColorBrush Color="Transparent" />
+                        </Grid.Background>
                         <VisualStateManager.VisualStateGroups>
                             <VisualStateGroup x:Name="CommonStates">
                                 <VisualState x:Name="Normal" />
-                                <VisualState x:Name="PointerOver" />
-                                <VisualState x:Name="Pressed" />
-                            </VisualStateGroup>
-                            <VisualStateGroup x:Name="FocusStates">
-                                <VisualState x:Name="Unfocused" />
-                                <VisualState x:Name="Focused" />
-                            </VisualStateGroup>
-                            <VisualStateGroup x:Name="SortStates">
-                                <VisualState x:Name="Unsorted" />
-                                <VisualState x:Name="SortAscending">
+
+                                <VisualState x:Name="PointerOver">
                                     <VisualState.Setters>
-                                        <Setter Target="SortIcon.Visibility"
-                                                Value="Visible" />
+                                        <Setter Target="rootGrid.Background"
+                                                Value="{ThemeResource TableViewHeaderBackgroundPointerOver}" />
                                     </VisualState.Setters>
                                 </VisualState>
-                                <VisualState x:Name="SortDescending">
+
+                                <VisualState x:Name="Pressed">
                                     <VisualState.Setters>
-                                        <Setter Target="SortIcon.Visibility"
-                                                Value="Visible" />
-                                        <Setter Target="SortIcon.Glyph"
-                                                Value="{ThemeResource SortIconDescending}" />
-                                    </VisualState.Setters>
-                                </VisualState>
-                            </VisualStateGroup>
-                            <VisualStateGroup x:Name="FilterStates">
-                                <VisualState x:Name="Unfiltered" />
-                                <VisualState x:Name="Filtered">
-                                    <VisualState.Setters>
-                                        <Setter Target="OptionsIcon.Visibility"
-                                                Value="Collapsed" />
-                                        <Setter Target="FilterIcon.Visibility"
-                                                Value="Visible" />
+                                        <Setter Target="rootGrid.Background"
+                                                Value="{ThemeResource TableViewHeaderBackgroundPressed}" />
                                     </VisualState.Setters>
                                 </VisualState>
                             </VisualStateGroup>
                         </VisualStateManager.VisualStateGroups>
-                        <Grid Background="{TemplateBinding Background}"
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Grid.Column="0"
+                              Background="{TemplateBinding Background}"
                               BorderBrush="{TemplateBinding BorderBrush}"
-                              BorderThickness="{TemplateBinding BorderThickness}"
-                              BackgroundSizing="{TemplateBinding BackgroundSizing}"
-                              VerticalAlignment="{TemplateBinding VerticalAlignment}"
-                              HorizontalAlignment="{TemplateBinding HorizontalAlignment}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+                              BorderThickness="{TemplateBinding BorderThickness}">
                             <ContentPresenter x:Name="ContentPresenter"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
                                               Margin="{TemplateBinding Padding}"
                                               Foreground="{TemplateBinding Foreground}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
@@ -138,39 +125,26 @@
                                     <Button.Flyout>
                                         <MenuFlyout x:Name="OptionsFlyout"
                                                     Placement="Bottom">
-                                            <MenuFlyoutItem Command="{Binding SortAscendingCommand}">
-                                                <MenuFlyoutItem.Icon>
-                                                    <FontIcon Glyph="&#xf0ad;" />
-                                                </MenuFlyoutItem.Icon>
-                                            </MenuFlyoutItem>
-                                            <MenuFlyoutItem Command="{Binding SortDescendingCommand}">
-                                                <MenuFlyoutItem.Icon>
-                                                    <FontIcon Glyph="&#xf0ae;" />
-                                                </MenuFlyoutItem.Icon>
-                                            </MenuFlyoutItem>
-                                            <MenuFlyoutItem Command="{Binding ClearSortingCommand}" />
-                                            <MenuFlyoutSeparator />
-                                            <MenuFlyoutItem Command="{Binding ClearFilterCommand}" />
                                             <MenuFlyoutItem x:Name="ItemsCheckFlyoutItem">
                                                 <MenuFlyoutItem.Template>
                                                     <ControlTemplate TargetType="MenuFlyoutItem">
-                                                        <Grid Margin="8,4"
-                                                              Width="250"
-                                                              Height="300">
+                                                        <!-- Width set to 240 for compact File Explorer style, Height is Auto with MaxHeight -->
+                                                        <Grid Margin="6,4"
+                                                              Width="240"
+                                                              MaxHeight="400">
                                                             <Grid.RowDefinitions>
-                                                                <RowDefinition Height="Auto" />
                                                                 <RowDefinition Height="Auto" />
                                                                 <RowDefinition Height="*" />
                                                             </Grid.RowDefinitions>
-                                                            <TextBox x:Name="SearchBox" />
-                                                            <Border Grid.Row="1"
+                                                             <Border Grid.Row="0"
                                                                     BorderThickness="0,0,0,1"
                                                                     BorderBrush="{ThemeResource MenuFlyoutSeparatorBackground}">
                                                                 <CheckBox x:Name="SelectAllCheckBox"
-                                                                          Margin="12,8,12,1" />
+                                                                          Margin="8,6,8,6"
+                                                                          FontSize="12" />
                                                             </Border>
                                                             <ListView x:Name="FilterItemsList"
-                                                                      Grid.Row="2"
+                                                                      Grid.Row="1"
                                                                       SelectionMode="None"
                                                                       not_win:Margin="12,0,0,0"
                                                                       ItemsSource="{Binding FilterItems}">
@@ -178,13 +152,13 @@
                                                                     <Style TargetType="ListViewItem"
                                                                            BasedOn="{StaticResource DefaultListViewItemStyle}">
                                                                         <Setter Property="Padding"
-                                                                                Value="12,0" />
+                                                                                Value="8,0" />
                                                                         <Setter Property="Margin"
                                                                                 Value="0" />
                                                                         <Setter Property="MinHeight"
-                                                                                Value="36" />
+                                                                                Value="32" />
                                                                         <Setter Property="Height"
-                                                                                Value="36" />
+                                                                                Value="32" />
                                                                         <Setter Property="HorizontalAlignment"
                                                                                 Value="Stretch" />
                                                                         <Setter Property="HorizontalContentAlignment"
@@ -199,44 +173,16 @@
                                                                             <Grid>
                                                                                 <Grid.ColumnDefinitions>
                                                                                     <ColumnDefinition Width="*" />
-                                                                                    <ColumnDefinition Width="Auto" />
                                                                                 </Grid.ColumnDefinitions>
 
                                                                                 <TextBlock Text="{Binding}"
-                                                                                           TextWrapping="NoWrap" />
-
-                                                                                <StackPanel Grid.Column="1"
-                                                                                            Orientation="Horizontal"
-                                                                                            Visibility="{Binding DataContext.TableView.ShowFilterItemsCount, ElementName=FilterItemsList, Converter={StaticResource BoolToVisibility}}">
-                                                                                    <TextBlock Text="(" />
-                                                                                    <TextBlock Text="{Binding Count}" />
-                                                                                    <TextBlock Text=")" />
-                                                                                </StackPanel>
+                                                                                           TextWrapping="NoWrap"
+                                                                                           FontSize="12" />
                                                                             </Grid>
                                                                         </CheckBox>
                                                                     </DataTemplate>
                                                                 </ListView.ItemTemplate>
                                                             </ListView>
-                                                        </Grid>
-                                                    </ControlTemplate>
-                                                </MenuFlyoutItem.Template>
-                                            </MenuFlyoutItem>
-                                            <MenuFlyoutSeparator />
-                                            <MenuFlyoutItem>
-                                                <MenuFlyoutItem.Template>
-                                                    <ControlTemplate TargetType="MenuFlyoutItem">
-                                                        <Grid Margin="12,4"
-                                                              ColumnSpacing="16">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*" />
-                                                                <ColumnDefinition Width="*" />
-                                                            </Grid.ColumnDefinitions>
-                                                            <Button Command="{Binding OkCommand}"
-                                                                    HorizontalAlignment="Stretch"
-                                                                    Style="{StaticResource AccentButtonStyle}" />
-                                                            <Button Command="{Binding CancelCommand}"
-                                                                    Grid.Column="1"
-                                                                    HorizontalAlignment="Stretch" />
                                                         </Grid>
                                                     </ControlTemplate>
                                                 </MenuFlyoutItem.Template>
@@ -249,22 +195,9 @@
                             <Rectangle x:Name="VerticalGridLine"
                                        Grid.Column="1"
                                        Width="1"
+                                       Fill="#E0E0E0"
                                        HorizontalAlignment="Right"
                                        VerticalAlignment="Stretch" />
-
-                            <!-- Column Resize Gripper -->
-                            <Border x:Name="ResizerGripper"
-                                    Grid.Column="1"
-                                    Width="8"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Stretch"
-                                    Background="Transparent">
-                                <Rectangle Width="1"
-                                           Fill="{ThemeResource TableViewHeaderForeground}"
-                                           Opacity="0.3"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Stretch" />
-                            </Border>
                         </Grid>
                     </Grid>
                 </ControlTemplate>

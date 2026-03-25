@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
         <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
@@ -14,12 +13,29 @@
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
-        <RootNamespace>TableViewNuGetSample</RootNamespace>
+        <RootNamespace>FileExplorerSample</RootNamespace>
 
         <!-- App Options -->
         <Platforms>x86;x64;ARM64</Platforms>
         <ApplicationManifest>app.manifest</ApplicationManifest>
     </PropertyGroup>
+    <ItemGroup>
+      <Content Include="Assets\Icons\application.svg" />
+      <Content Include="Assets\Icons\archive.svg" />
+      <Content Include="Assets\Icons\audio.svg" />
+      <Content Include="Assets\Icons\code.svg" />
+      <Content Include="Assets\Icons\document.svg" />
+      <Content Include="Assets\Icons\excel.svg" />
+      <Content Include="Assets\Icons\file.svg" />
+      <Content Include="Assets\Icons\folder.svg" />
+      <Content Include="Assets\Icons\image.svg" />
+      <Content Include="Assets\Icons\pdf.svg" />
+      <Content Include="Assets\Icons\video.svg" />
+      <Content Include="Assets\Icons\xml.svg" />
+    </ItemGroup>
+    <ItemGroup>
+      <Page Remove="Styles\ColumnHeaderStyles.xaml" />
+    </ItemGroup>
 
     <ItemGroup>
         <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -32,12 +48,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Remove="TableViewNuGetSample.slnx" />
-    </ItemGroup>
-
-    <ItemGroup>
         <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.*" />
-        <PackageReference Include="Microsoft.Web.WebView2" Version="1.*" />
         <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.*" />
 
         <Manifest Include="$(ApplicationManifest)" />
@@ -48,5 +59,24 @@
             <SetTargetFramework>TargetFramework=net9.0-windows10.0.19041.0</SetTargetFramework>
         </ProjectReference>
     </ItemGroup>
-</Project>
 
+    <ItemGroup>
+      <Page Update="Styles\FileExplorerTheme.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </Page>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Controls\" />
+      <Folder Include="Filters\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="Styles\ColumnHeaderStyles.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </None>
+      <None Update="Styles\TableViewColumnHeaderStyle.xaml">
+        <Generator>MSBuild:Compile</Generator>
+      </None>
+    </ItemGroup>
+</Project>

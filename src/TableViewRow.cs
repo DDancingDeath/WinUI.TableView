@@ -145,7 +145,13 @@ public partial class TableViewRow : ListViewItem
 
         if (!isGroupHeaderItem)
         {
-            if (_ensureCells || Cells.Count == 0)
+            if (HasRowTemplate)
+            {
+                RowPresenter?.ClearCells();
+                RowPresenter?.SetRowTemplate();
+                _ensureCells = true;
+            }
+            else if (_ensureCells || Cells.Count == 0)
             {
                 EnsureCells();
             }
@@ -180,6 +186,17 @@ public partial class TableViewRow : ListViewItem
         if (!KeyboardHelper.IsShiftKeyDown() && TableView is not null)
         {
             TableView.SelectionStartRowIndex = Index;
+            
+            // Start drag rectangle for row selection
+            if (TableView.SelectionMode is ListViewSelectionMode.Multiple or ListViewSelectionMode.Extended)
+            {
+                var point = e.GetCurrentPoint(this).Position;
+                var canvasPoint = TransformPointToCanvas(point);
+                if (canvasPoint.HasValue)
+                {
+                    TableView.StartDragRectangle(canvasPoint.Value);
+                }
+            }
         }
     }
 
@@ -199,6 +216,38 @@ public partial class TableViewRow : ListViewItem
             TableView.SelectionStartCellSlot = null;
             TableView.SelectionStartRowIndex = Index;
         }
+        
+        TableView?.EndDragRectangle();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerMoved(PointerRoutedEventArgs e)
+    {
+        if (TableView?.IsGroupHeaderItem(Content) is true)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        base.OnPointerMoved(e);
+
+        if (TableView is not null && e.Pointer.IsInContact)
+        {
+            var point = e.GetCurrentPoint(this).Position;
+            var canvasPoint = TransformPointToCanvas(point);
+            if (canvasPoint.HasValue)
+            {
+                TableView.UpdateDragRectangle(canvasPoint.Value);
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerCaptureLost(PointerRoutedEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+        
+        TableView?.EndDragRectangle();
     }
 
     /// <inheritdoc/>
@@ -219,8 +268,26 @@ public partial class TableViewRow : ListViewItem
         }
     }
 
+    /// <summary>
+    /// Transforms a point relative to this row to coordinates relative to the drag rectangle canvas.
+    /// </summary>
+    private Point? TransformPointToCanvas(Point position)
+    {
+        if (TableView?._dragRectangleCanvas is null) return null;
+
+        try
+        {
+            var transform = TransformToVisual(TableView._dragRectangleCanvas);
+            return transform.TransformPoint(position);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <inheritdoc/>
-    protected override void OnDoubleTapped(DoubleTappedRoutedEventArgs e)
+    protected override async void OnDoubleTapped(DoubleTappedRoutedEventArgs e)
     {
         if (TableView?.IsGroupHeaderItem(Content) is true)
         {
@@ -231,6 +298,25 @@ public partial class TableViewRow : ListViewItem
         var eventArgs = new TableViewRowDoubleTappedEventArgs(Index, this, Content);
         TableView?.OnRowDoubleTapped(eventArgs);
         e.Handled = eventArgs.Handled;
+
+        if (e.Handled)
+        {
+            return;
+        }
+
+        // When SelectionUnit is Row, the cell's OnDoubleTapped never fires because
+        // ListViewItem consumes the pointer events for row selection. Forward the
+        // double-tap to the target cell so editing can still be initiated.
+        if (TableView?.SelectionUnit is TableViewSelectionUnit.Row
+            && e.OriginalSource is DependencyObject source
+            && source.FindAscendant<TableViewCell>() is { IsReadOnly: false } cell
+            && !TableView.IsEditing
+            && cell.Column?.UseSingleElement is not true)
+        {
+            TableView.MakeSelection(cell.Slot, false);
+            e.Handled = await cell.BeginCellEditing(e);
+            return;
+        }
 
         base.OnDoubleTapped(e);
     }
@@ -259,6 +345,13 @@ public partial class TableViewRow : ListViewItem
         }
 
         if (TableView.IsGroupHeaderItem(Content))
+        {
+            RowPresenter?.ClearCells();
+            _ensureCells = true;
+            return;
+        }
+
+        if (HasRowTemplate)
         {
             RowPresenter?.ClearCells();
             _ensureCells = true;
@@ -333,7 +426,11 @@ public partial class TableViewRow : ListViewItem
         }
         else if (e.PropertyName is nameof(TableViewColumn.ActualWidth))
         {
-            if (Cells.FirstOrDefault(x => x.Column == e.Column) is { } cell)
+            if (HasRowTemplate)
+            {
+                RowPresenter?.UpdateRowTemplateWidth();
+            }
+            else if (Cells.FirstOrDefault(x => x.Column == e.Column) is { } cell)
             {
                 cell.Width = e.Column.ActualWidth;
             }
@@ -580,13 +677,6 @@ public partial class TableViewRow : ListViewItem
             selectionIndicator = fontIcon?.Parent as Border;
         }
 
-        if (TableView is ListView { SelectionMode: ListViewSelectionMode.Multiple })
-        {
-            var fontIcon = this.FindDescendant<FontIcon>(x => x.Glyph == Check_Mark);
-            selectionIndicator = fontIcon?.Parent as Border;
-        }
-
-
         _selectionBackground ??= _itemPresenter?.FindDescendants()
                                                 .OfType<Border>()
                                                 .FirstOrDefault(x => x.Name is not Selection_Background && x.Margin == _selectionBackgroundMargin);
@@ -697,6 +787,30 @@ public partial class TableViewRow : ListViewItem
                 _tableView = value;
                 OnTableViewChanged();
             }
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether a row template is active for this row.
+    /// </summary>
+    internal bool HasRowTemplate => TableView?.RowTemplate is not null || TableView?.RowTemplateSelector is not null;
+
+    /// <summary>
+    /// Applies or removes the row template. When a RowTemplate is set on the TableView,
+    /// cells are cleared and the template is used. When removed, cells are regenerated from columns.
+    /// </summary>
+    internal void ApplyRowTemplate()
+    {
+        if (HasRowTemplate)
+        {
+            RowPresenter?.ClearCells();
+            _ensureCells = true;
+        }
+        else
+        {
+            RowPresenter?.SetRowTemplate();
+            _ensureCells = true;
+            EnsureCells();
         }
     }
 

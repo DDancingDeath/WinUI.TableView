@@ -116,6 +116,24 @@
                 </Grid>
                 <TextBlock Text="{Binding DisplayName}" FontSize="12"
                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                
+                <!-- Critical resource indicator: red warning icon -->
+                <FontIcon Glyph="&#xE7BA;" FontSize="12" 
+                          Foreground="#E74856"
+                          ToolTipService.ToolTip="Critical: High CPU and Memory"
+                          Visibility="{Binding IsCriticalResourceVisibility}" />
+                
+                <!-- High CPU indicator: orange fire icon -->
+                <FontIcon Glyph="&#xE91B;" FontSize="12" 
+                          Foreground="#FF8C00"
+                          ToolTipService.ToolTip="High CPU Usage"
+                          Visibility="{Binding IsHighCpuResourceVisibility}" />
+                
+                <!-- High Memory indicator: blue/purple icon -->
+                <FontIcon Glyph="&#xE950;" FontSize="12" 
+                          Foreground="#9B59B6"
+                          ToolTipService.ToolTip="High Memory Usage"
+                          Visibility="{Binding IsHighMemoryResourceVisibility}" />
             </StackPanel>
         </DataTemplate>
 

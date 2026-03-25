@@ -43,6 +43,11 @@ public partial class MainPage : Page
 
     private static readonly SolidColorBrush _childRowBackground = new(Color.FromArgb(20, 255, 255, 255));
     private static readonly SolidColorBrush _defaultRowBackground = new(Colors.Transparent);
+    
+    // High resource usage row backgrounds (theme-aware)
+    private static SolidColorBrush _highCpuRowBackground = new(Color.FromArgb(25, 255, 140, 0));      // Orange tint
+    private static SolidColorBrush _highMemoryRowBackground = new(Color.FromArgb(25, 255, 50, 100));  // Pink tint
+    private static SolidColorBrush _criticalRowBackground = new(Color.FromArgb(35, 230, 40, 0));      // Red tint
 
     private void SetupChildRowStyle()
     {
@@ -58,6 +63,26 @@ public partial class MainPage : Page
 
         // Apply a subtle background to child rows at the row level
         ProcessTable.ContainerContentChanging += OnContainerContentChanging;
+        
+        // Update row background colors when theme changes
+        ActualThemeChanged += (s, _) => UpdateRowBackgroundColors(((FrameworkElement)s).ActualTheme);
+        UpdateRowBackgroundColors(ActualTheme);
+    }
+    
+    private void UpdateRowBackgroundColors(ElementTheme theme)
+    {
+        if (theme == ElementTheme.Dark)
+        {
+            _highCpuRowBackground = new(Color.FromArgb(25, 255, 140, 0));      // Orange
+            _highMemoryRowBackground = new(Color.FromArgb(25, 255, 50, 100));  // Pink
+            _criticalRowBackground = new(Color.FromArgb(35, 230, 40, 0));      // Red
+        }
+        else
+        {
+            _highCpuRowBackground = new(Color.FromArgb(20, 255, 200, 100));    // Light orange
+            _highMemoryRowBackground = new(Color.FromArgb(20, 200, 150, 255)); // Light purple
+            _criticalRowBackground = new(Color.FromArgb(30, 255, 100, 100));   // Light red
+        }
     }
 
     private StackPanel CreateHeaderContent(string label, out TextBlock pctBlock)
@@ -120,11 +145,43 @@ public partial class MainPage : Page
 
     private void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
-        if (args.ItemContainer is TableViewRow row)
+        if (args.ItemContainer is TableViewRow row && args.Item is ProcessItem process)
         {
-            row.Background = args.Item is ProcessItem { IsChild: true }
-                ? _childRowBackground
-                : _defaultRowBackground;
+            // Priority 1: Critical processes (high CPU AND high memory)
+            if (process.IsCriticalResource)
+            {
+                row.Background = _criticalRowBackground;
+                row.BorderBrush = new SolidColorBrush(Color.FromArgb(100, 230, 40, 0));
+                row.BorderThickness = new Thickness(2, 0, 0, 0);
+            }
+            // Priority 2: High CPU processes
+            else if (process.IsHighCpuResource)
+            {
+                row.Background = _highCpuRowBackground;
+                row.BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 140, 0));
+                row.BorderThickness = new Thickness(2, 0, 0, 0);
+            }
+            // Priority 3: High memory processes
+            else if (process.IsHighMemoryResource)
+            {
+                row.Background = _highMemoryRowBackground;
+                row.BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 50, 100));
+                row.BorderThickness = new Thickness(2, 0, 0, 0);
+            }
+            // Priority 4: Child rows (subtle background)
+            else if (process.IsChild)
+            {
+                row.Background = _childRowBackground;
+                row.BorderBrush = new SolidColorBrush(Colors.Transparent);
+                row.BorderThickness = new Thickness(0);
+            }
+            // Default: transparent
+            else
+            {
+                row.Background = _defaultRowBackground;
+                row.BorderBrush = new SolidColorBrush(Colors.Transparent);
+                row.BorderThickness = new Thickness(0);
+            }
         }
     }
 
@@ -860,28 +917,54 @@ public sealed class ProcessItem : INotifyPropertyChanged
     public double CpuPercent
     {
         get => _cpuPercent;
-        set { if (SetField(ref _cpuPercent, value)) { OnPropertyChanged(nameof(CpuDisplay)); OnPropertyChanged(nameof(CpuBackground)); OnPropertyChanged(nameof(HasCpuHeatMap)); } }
+        set 
+        { 
+            if (SetField(ref _cpuPercent, value)) 
+            { 
+                OnPropertyChanged(nameof(CpuDisplay)); 
+                OnPropertyChanged(nameof(CpuBackground)); 
+                OnPropertyChanged(nameof(HasCpuHeatMap)); 
+                OnPropertyChanged(nameof(IsHighCpuResource)); 
+                OnPropertyChanged(nameof(IsCriticalResource));
+                OnPropertyChanged(nameof(IsCriticalResourceVisibility));
+                OnPropertyChanged(nameof(IsHighCpuResourceVisibility));
+                OnPropertyChanged(nameof(IsHighMemoryResourceVisibility));
+            } 
+        }
     }
 
     private double _memoryMB;
     public double MemoryMB
     {
         get => _memoryMB;
-        set { if (SetField(ref _memoryMB, value)) { OnPropertyChanged(nameof(MemoryDisplay)); OnPropertyChanged(nameof(MemoryBackground)); OnPropertyChanged(nameof(HasMemoryHeatMap)); } }
+        set 
+        { 
+            if (SetField(ref _memoryMB, value)) 
+            { 
+                OnPropertyChanged(nameof(MemoryDisplay)); 
+                OnPropertyChanged(nameof(MemoryBackground)); 
+                OnPropertyChanged(nameof(HasMemoryHeatMap)); 
+                OnPropertyChanged(nameof(IsHighMemoryResource)); 
+                OnPropertyChanged(nameof(IsCriticalResource));
+                OnPropertyChanged(nameof(IsCriticalResourceVisibility));
+                OnPropertyChanged(nameof(IsHighCpuResourceVisibility));
+                OnPropertyChanged(nameof(IsHighMemoryResourceVisibility));
+            } 
+        }
     }
 
     private double _diskMBps;
     public double DiskMBps
     {
         get => _diskMBps;
-        set { if (SetField(ref _diskMBps, value)) { OnPropertyChanged(nameof(DiskDisplay)); OnPropertyChanged(nameof(DiskBackground)); OnPropertyChanged(nameof(HasDiskHeatMap)); } }
+        set { if (SetField(ref _diskMBps, value)) { OnPropertyChanged(nameof(DiskDisplay)); OnPropertyChanged(nameof(DiskBackground)); OnPropertyChanged(nameof(HasDiskHeatMap)); OnPropertyChanged(nameof(IsHighDiskResource)); } }
     }
 
     private double _networkMbps;
     public double NetworkMbps
     {
         get => _networkMbps;
-        set { if (SetField(ref _networkMbps, value)) { OnPropertyChanged(nameof(NetworkDisplay)); OnPropertyChanged(nameof(NetworkBackground)); OnPropertyChanged(nameof(HasNetworkHeatMap)); } }
+        set { if (SetField(ref _networkMbps, value)) { OnPropertyChanged(nameof(NetworkDisplay)); OnPropertyChanged(nameof(NetworkBackground)); OnPropertyChanged(nameof(HasNetworkHeatMap)); OnPropertyChanged(nameof(IsHighNetworkResource)); } }
     }
 
     private double _gpuPercent;
@@ -964,6 +1047,37 @@ public sealed class ProcessItem : INotifyPropertyChanged
     public Visibility HasMemoryHeatMap => MemoryMB > 100 ? Visibility.Visible : Visibility.Collapsed;
     public Visibility HasDiskHeatMap => DiskMBps > 0.5 ? Visibility.Visible : Visibility.Collapsed;
     public Visibility HasNetworkHeatMap => NetworkMbps > 0.3 ? Visibility.Visible : Visibility.Collapsed;
+    
+    // ── Row-level highlighting (for custom row templates) ──
+    /// <summary>
+    /// Indicates if this process is using high CPU resources (>15% CPU)
+    /// </summary>
+    public bool IsHighCpuResource => CpuPercent > 15;
+    
+    /// <summary>
+    /// Indicates if this process is using high memory resources (>500 MB)
+    /// </summary>
+    public bool IsHighMemoryResource => MemoryMB > 500;
+    
+    /// <summary>
+    /// Indicates if this process is using high disk I/O (>5 MB/s)
+    /// </summary>
+    public bool IsHighDiskResource => DiskMBps > 5;
+    
+    /// <summary>
+    /// Indicates if this process is using high network bandwidth (>2 Mbps)
+    /// </summary>
+    public bool IsHighNetworkResource => NetworkMbps > 2;
+    
+    /// <summary>
+    /// Indicates if this process is critical (high CPU AND high memory)
+    /// </summary>
+    public bool IsCriticalResource => CpuPercent > 20 && MemoryMB > 800;
+    
+    // Visibility properties for warning indicators in Name column
+    public Visibility IsCriticalResourceVisibility => IsCriticalResource ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility IsHighCpuResourceVisibility => !IsCriticalResource && IsHighCpuResource ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility IsHighMemoryResourceVisibility => !IsCriticalResource && !IsHighCpuResource && IsHighMemoryResource ? Visibility.Visible : Visibility.Collapsed;
 
     public Brush GpuBackground => GpuPercent switch
     {

@@ -233,6 +233,7 @@
                         </tableView:TableView>
                     </Grid>
                 </TabViewItem>
+
                 <TabViewItem Header="Row Template">
                     <Grid Padding="8" RowSpacing="8">
                         <Grid.RowDefinitions>

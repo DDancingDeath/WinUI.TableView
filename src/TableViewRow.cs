@@ -37,6 +37,7 @@ public partial class TableViewRow : ListViewItem
     private ListViewItemPresenter? _itemPresenter;
     private Border? _selectionBackground;
     private bool _ensureCells = true;
+    private bool _isEditing;
     private Brush? _cellPresenterBackground;
     private Brush? _cellPresenterForeground;
 
@@ -226,7 +227,7 @@ public partial class TableViewRow : ListViewItem
     }
 
     /// <inheritdoc/>
-    protected override void OnDoubleTapped(DoubleTappedRoutedEventArgs e)
+    protected override async void OnDoubleTapped(DoubleTappedRoutedEventArgs e)
     {
         if (TableView?.IsGroupHeaderItem(Content) is true)
         {
@@ -237,6 +238,25 @@ public partial class TableViewRow : ListViewItem
         var eventArgs = new TableViewRowDoubleTappedEventArgs(Index, this, Content);
         TableView?.OnRowDoubleTapped(eventArgs);
         e.Handled = eventArgs.Handled;
+
+        if (e.Handled)
+        {
+            return;
+        }
+
+        // When SelectionUnit is Row, the cell's OnDoubleTapped never fires because
+        // ListViewItem consumes the pointer events for row selection. Forward the
+        // double-tap to the target cell so editing can still be initiated.
+        if (TableView?.SelectionUnit is TableViewSelectionUnit.Row
+            && e.OriginalSource is DependencyObject source
+            && source.FindAscendant<TableViewCell>() is { IsReadOnly: false } cell
+            && !TableView.IsEditing
+            && cell.Column?.UseSingleElement is not true)
+        {
+            TableView.MakeSelection(cell.Slot, false);
+            e.Handled = await cell.BeginCellEditing(e);
+            return;
+        }
 
         base.OnDoubleTapped(e);
     }
@@ -655,7 +675,7 @@ public partial class TableViewRow : ListViewItem
     /// </summary>
     internal void EnsureAlternateColors()
     {
-        if (TableView is null || RowPresenter is null) return;
+        if (TableView is null || RowPresenter is null || _isEditing) return;
 
         RowPresenter.Background =
             Index % 2 == 1 && TableView.AlternateRowBackground is not null ? TableView.AlternateRowBackground : _cellPresenterBackground;
@@ -671,6 +691,39 @@ public partial class TableViewRow : ListViewItem
         if (fontIcon?.Parent is Border border)
         {
             border.Opacity = TableView?.IsEditing is true ? 0.3 : 1;
+        }
+    }
+
+    /// <summary>
+    /// Highlights or unhighlights the row to indicate that a cell is being edited.
+    /// </summary>
+    internal void ApplyEditingHighlight(bool isEditing)
+    {
+        _isEditing = isEditing;
+
+        if (isEditing)
+        {
+#if WINDOWS
+            if (RowPresenter is not null)
+            {
+                RowPresenter.Background = _itemPresenter?.PointerOverBackground;
+            }
+#else
+            if (_selectionBackground is not null)
+            {
+                _selectionBackground.Opacity = 1;
+            }
+#endif
+        }
+        else
+        {
+#if !WINDOWS
+            if (_selectionBackground is not null)
+            {
+                _selectionBackground.Opacity = IsSelected ? 1 : 0;
+            }
+#endif
+            EnsureAlternateColors();
         }
     }
 

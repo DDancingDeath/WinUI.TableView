@@ -47,6 +47,7 @@ public partial class TableView : ListView
     private bool _shouldThrowSelectionModeChangedException;
     private bool _isUpdatingBaseItemsSource;
     private bool _ensureColumns = true;
+    private TableViewRow? _editingHighlightRow;
     private readonly List<TableViewRow> _rows = [];
     private readonly CollectionView _collectionView = [];
     private readonly ObservableCollection<object> _displayItems = [];
@@ -276,7 +277,7 @@ public partial class TableView : ListView
 
             do
             {
-                newSlot = GetNextSlot(newSlot, shiftKey, e.Key is VirtualKey.Enter);
+                newSlot = GetNextSlot(newSlot, shiftKey, e.Key is VirtualKey.Enter || SelectionUnit is TableViewSelectionUnit.Row);
 
             } while (isEditing && Columns[newSlot.Column].IsReadOnly);
 
@@ -287,6 +288,16 @@ public partial class TableView : ListView
                 if (CurrentCellSlot == newSlot || GetCellFromSlot(newSlot) is not { } nextCell || !await nextCell.BeginCellEditing(e))
                 {
                     SetIsEditing(false);
+                }
+                else if (SelectionUnit is TableViewSelectionUnit.Row && newSlot.Row != currentCell.Slot.Row)
+                {
+                    // Editing moved to a different row — move the highlight
+                    _editingHighlightRow?.ApplyEditingHighlight(false);
+                    if (ContainerFromIndex(newSlot.Row) is TableViewRow newRow)
+                    {
+                        _editingHighlightRow = newRow;
+                        newRow.ApplyEditingHighlight(true);
+                    }
                 }
             }
 
@@ -2253,6 +2264,20 @@ public partial class TableView : ListView
 
         IsEditing = value;
         UpdateCornerButtonState();
+
+        if (value && SelectionUnit is TableViewSelectionUnit.Row)
+        {
+            if (CurrentCellSlot.HasValue && ContainerFromIndex(CurrentCellSlot.Value.Row) is TableViewRow row)
+            {
+                _editingHighlightRow = row;
+                row.ApplyEditingHighlight(true);
+            }
+        }
+        else if (!value)
+        {
+            _editingHighlightRow?.ApplyEditingHighlight(false);
+            _editingHighlightRow = null;
+        }
     }
 
     /// <summary>

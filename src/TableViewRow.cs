@@ -209,7 +209,7 @@ public partial class TableViewRow : ListViewItem
     }
 
     /// <inheritdoc/>
-    protected override void OnTapped(TappedRoutedEventArgs e)
+    protected override async void OnTapped(TappedRoutedEventArgs e)
     {
         if (TableView?.IsGroupHeaderItem(Content) is true)
         {
@@ -223,6 +223,20 @@ public partial class TableViewRow : ListViewItem
         {
             TableView.CurrentRowIndex = Index;
             TableView.LastSelectionUnit = TableViewSelectionUnit.Row;
+        }
+
+        // When SelectionUnit is Row and the row is already selected, forward the
+        // tap to the target cell so editing can be initiated with a second tap
+        // (like File Explorer's tap-pause-tap to rename).
+        if (TableView?.SelectionUnit is TableViewSelectionUnit.Row
+            && IsSelected
+            && e.OriginalSource is DependencyObject source
+            && source.FindAscendant<TableViewCell>() is { IsReadOnly: false } cell
+            && !TableView.IsEditing
+            && cell.Column?.UseSingleElement is not true)
+        {
+            TableView.MakeSelection(cell.Slot, false);
+            e.Handled = await cell.BeginCellEditing(e);
         }
     }
 

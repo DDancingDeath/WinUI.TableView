@@ -211,6 +211,13 @@ public partial class TableView : ListView
                 row.EnsureCellsStyle(default, item);
                 row.ApplyCellsSelectionState();
 
+                // Reset current cell border on all cells in recycled containers
+                // to clear stale "Current" visual state from previous use.
+                foreach (var cell in row.Cells)
+                {
+                    cell.ApplyCurrentCellState();
+                }
+
                 if (CurrentCellSlot.HasValue)
                 {
                     row.ApplyCurrentCellState(CurrentCellSlot.Value);
@@ -1576,6 +1583,7 @@ public partial class TableView : ListView
     /// </summary>
     public void RefreshSorting()
     {
+        CancelEditing();
         DeselectAll();
         _collectionView.RefreshSorting();
     }
@@ -1585,6 +1593,7 @@ public partial class TableView : ListView
     /// </summary>
     public void ClearAllSorting()
     {
+        CancelEditing();
         DeselectAll();
         SortDescriptions.Clear();
 
@@ -1626,6 +1635,7 @@ public partial class TableView : ListView
     /// </summary>
     public void RefreshFilter()
     {
+        CancelEditing();
         DeselectAll();
         _collectionView.RefreshFilter();
     }
@@ -1726,11 +1736,12 @@ public partial class TableView : ListView
     /// </summary>
     private void DeselectAllCells()
     {
+        CurrentCellSlot = null;
+
         if (SelectedCellRanges.Count is 0) return;
 
         SelectedCellRanges.Clear();
         OnCellSelectionChanged();
-        CurrentCellSlot = null;
     }
 
     /// <summary>
@@ -2309,6 +2320,26 @@ public partial class TableView : ListView
             _editingHighlightRow = null;
             _editingHighlightRowIndex = -1;
         }
+    }
+
+    /// <summary>
+    /// Cancels any active cell editing, restores the cell to display mode,
+    /// and clears the editing highlight.
+    /// </summary>
+    internal void CancelEditing()
+    {
+        if (!IsEditing) return;
+
+        if (CurrentCellSlot.HasValue)
+        {
+            var currentCell = GetCellFromSlot(CurrentCellSlot.Value);
+            if (currentCell is not null)
+            {
+                EndCellEditing(TableViewEditAction.Cancel, currentCell);
+            }
+        }
+
+        SetIsEditing(false);
     }
 
     /// <summary>

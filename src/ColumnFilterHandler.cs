@@ -112,6 +112,7 @@ public class ColumnFilterHandler : IColumnFilterHandler
         if (column is { TableView.CollectionView: CollectionView { } collectionView })
         {
             using var defer = collectionView.DeferRefresh();
+            column.TableView.CancelEditing();
             column.TableView.DeselectAll();
 
             if (!column.IsFiltered)

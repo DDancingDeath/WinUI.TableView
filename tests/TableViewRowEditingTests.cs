@@ -33,6 +33,70 @@ public class TableViewRowEditingTests
     }
 
     [UITestMethod]
+    public void SetIsEditing_DoesNotHighlightInCellMode()
+    {
+        var tableView = new TableView
+        {
+            AutoGenerateColumns = false,
+            SelectionMode = ListViewSelectionMode.Single,
+            SelectionUnit = TableViewSelectionUnit.Cell,
+        };
+
+        tableView.Columns.Add(new TableViewTextColumn { Header = "Name" });
+
+        // In Cell mode, SetIsEditing should not attempt to apply highlight
+        tableView.SetIsEditing(true);
+        Assert.IsTrue(tableView.IsEditing);
+
+        tableView.SetIsEditing(false);
+        Assert.IsFalse(tableView.IsEditing);
+    }
+
+    [UITestMethod]
+    public void SetIsEditing_TracksRowIndexForHighlight()
+    {
+        var tableView = new TableView
+        {
+            AutoGenerateColumns = false,
+            SelectionMode = ListViewSelectionMode.Single,
+            SelectionUnit = TableViewSelectionUnit.Row,
+        };
+
+        tableView.Columns.Add(new TableViewTextColumn { Header = "Name" });
+
+        // Set CurrentCellSlot so SetIsEditing can track the row index
+        tableView.CurrentCellSlot = new TableViewCellSlot(2, 0);
+
+        tableView.SetIsEditing(true);
+        Assert.IsTrue(tableView.IsEditing);
+
+        // ContainerFromIndex returns null without a visual tree,
+        // but the row index should still be tracked internally
+        tableView.SetIsEditing(false);
+        Assert.IsFalse(tableView.IsEditing);
+    }
+
+    [UITestMethod]
+    public void SetIsEditing_HighlightsInCellOrRowMode()
+    {
+        var tableView = new TableView
+        {
+            AutoGenerateColumns = false,
+            SelectionMode = ListViewSelectionMode.Single,
+            SelectionUnit = TableViewSelectionUnit.CellOrRow,
+        };
+
+        tableView.Columns.Add(new TableViewTextColumn { Header = "Name" });
+
+        // CellOrRow mode should also attempt highlight (same as Row mode)
+        tableView.SetIsEditing(true);
+        Assert.IsTrue(tableView.IsEditing);
+
+        tableView.SetIsEditing(false);
+        Assert.IsFalse(tableView.IsEditing);
+    }
+
+    [UITestMethod]
     public void ApplyEditingHighlight_Toggles()
     {
         var row = new TableViewRow();

@@ -37,7 +37,8 @@ public partial class TableViewRow : ListViewItem
     private ListViewItemPresenter? _itemPresenter;
     private Border? _selectionBackground;
     private bool _ensureCells = true;
-    private bool _isEditing;
+    private bool _hasEditingHighlight;
+    private bool _isBeginningEdit;
     private Brush? _cellPresenterBackground;
     private Brush? _cellPresenterForeground;
 
@@ -233,10 +234,13 @@ public partial class TableViewRow : ListViewItem
             && e.OriginalSource is DependencyObject source
             && source.FindAscendant<TableViewCell>() is { IsReadOnly: false } cell
             && !TableView.IsEditing
+            && !_isBeginningEdit
             && cell.Column?.UseSingleElement is not true)
         {
+            _isBeginningEdit = true;
             TableView.MakeSelection(cell.Slot, false);
             e.Handled = await cell.BeginCellEditing(e);
+            _isBeginningEdit = false;
         }
     }
 
@@ -265,10 +269,13 @@ public partial class TableViewRow : ListViewItem
             && e.OriginalSource is DependencyObject source
             && source.FindAscendant<TableViewCell>() is { IsReadOnly: false } cell
             && !TableView.IsEditing
+            && !_isBeginningEdit
             && cell.Column?.UseSingleElement is not true)
         {
+            _isBeginningEdit = true;
             TableView.MakeSelection(cell.Slot, false);
             e.Handled = await cell.BeginCellEditing(e);
+            _isBeginningEdit = false;
             return;
         }
 
@@ -689,7 +696,7 @@ public partial class TableViewRow : ListViewItem
     /// </summary>
     internal void EnsureAlternateColors()
     {
-        if (TableView is null || RowPresenter is null || _isEditing) return;
+        if (TableView is null || RowPresenter is null || _hasEditingHighlight) return;
 
         RowPresenter.Background =
             Index % 2 == 1 && TableView.AlternateRowBackground is not null ? TableView.AlternateRowBackground : _cellPresenterBackground;
@@ -713,14 +720,14 @@ public partial class TableViewRow : ListViewItem
     /// </summary>
     internal void ApplyEditingHighlight(bool isEditing)
     {
-        _isEditing = isEditing;
+        _hasEditingHighlight = isEditing;
 
         if (isEditing)
         {
 #if WINDOWS
-            if (RowPresenter is not null)
+            if (RowPresenter is not null && _itemPresenter?.PointerOverBackground is { } pointerOverBrush)
             {
-                RowPresenter.Background = _itemPresenter?.PointerOverBackground;
+                RowPresenter.Background = pointerOverBrush;
             }
 #else
             if (_selectionBackground is not null)
@@ -731,7 +738,12 @@ public partial class TableViewRow : ListViewItem
         }
         else
         {
-#if !WINDOWS
+#if WINDOWS
+            if (RowPresenter is not null)
+            {
+                RowPresenter.Background = _cellPresenterBackground;
+            }
+#else
             if (_selectionBackground is not null)
             {
                 _selectionBackground.Opacity = IsSelected ? 1 : 0;

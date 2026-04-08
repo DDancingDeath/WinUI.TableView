@@ -217,6 +217,13 @@ public partial class TableView : ListView
                 row.EnsureCellsStyle(default, item);
                 row.ApplyCellsSelectionState();
 
+                // Reset current cell border on all cells in recycled containers
+                // to clear stale "Current" visual state from previous use.
+                foreach (var cell in row.Cells)
+                {
+                    cell.ApplyCurrentCellState();
+                }
+
                 if (CurrentCellSlot.HasValue)
                 {
                     row.ApplyCurrentCellState(CurrentCellSlot.Value);

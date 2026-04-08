@@ -328,7 +328,7 @@ public partial class TableViewCell : ContentControl
         if ((TableView?.SelectionMode is not ListViewSelectionMode.None
            && TableView?.SelectionUnit is not TableViewSelectionUnit.Row)
            || !TableView.IsReadOnly
-           || (TableView?.SelectionUnit is TableViewSelectionUnit.Row && !IsReadOnly))
+           || (TableView?.SelectionUnit is TableViewSelectionUnit.Row or TableViewSelectionUnit.CellOrRow && !IsReadOnly))
         {
             VisualStates.GoToState(this, false, VisualStates.StatePointerOver);
         }
@@ -342,7 +342,7 @@ public partial class TableViewCell : ContentControl
         if ((TableView?.SelectionMode is not ListViewSelectionMode.None
             && TableView?.SelectionUnit is not TableViewSelectionUnit.Row)
             || !TableView.IsReadOnly
-            || (TableView?.SelectionUnit is TableViewSelectionUnit.Row && !IsReadOnly))
+            || (TableView?.SelectionUnit is TableViewSelectionUnit.Row or TableViewSelectionUnit.CellOrRow && !IsReadOnly))
         {
             VisualStates.GoToState(this, false, VisualStates.StateNormal);
         }
@@ -373,6 +373,16 @@ public partial class TableViewCell : ContentControl
         {
             MakeSelection();
             e.Handled = true;
+        }
+        else if (TableView?.SelectionUnit is TableViewSelectionUnit.CellOrRow
+            && !IsReadOnly
+            && TableView is not null
+            && !TableView.IsEditing
+            && Column?.UseSingleElement is not true)
+        {
+            // Second tap on an already-selected cell in CellOrRow mode — start editing
+            // (like File Explorer's tap-pause-tap to rename).
+            e.Handled = await BeginCellEditing(e);
         }
     }
 

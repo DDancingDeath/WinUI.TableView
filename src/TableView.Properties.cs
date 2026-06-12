@@ -331,6 +331,16 @@ public partial class TableView
     public static readonly DependencyProperty ShowDragRectangleProperty = DependencyProperty.Register(nameof(ShowDragRectangle), typeof(bool), typeof(TableView), new PropertyMetadata(true));
 
     /// <summary>
+    /// Identifies the <see cref="RowTemplate"/> dependency property.
+    /// </summary>
+    public static readonly DependencyProperty RowTemplateProperty = DependencyProperty.Register(nameof(RowTemplate), typeof(DataTemplate), typeof(TableView), new PropertyMetadata(null, OnRowTemplateChanged));
+
+    /// <summary>
+    /// Identifies the <see cref="RowTemplateSelector"/> dependency property.
+    /// </summary>
+    public static readonly DependencyProperty RowTemplateSelectorProperty = DependencyProperty.Register(nameof(RowTemplateSelector), typeof(DataTemplateSelector), typeof(TableView), new PropertyMetadata(null, OnRowTemplateChanged));
+
+    /// <summary>
     /// Gets or sets a value indicating whether opening the column filter over header right-click is enabled.
     /// </summary>
     public bool UseRightClickForColumnFilter
@@ -405,6 +415,28 @@ public partial class TableView
     }
 
     /// <summary>
+    /// Gets or sets the data template that defines the visual structure of each row's content.
+    /// When set, this template is used for rendering the entire row instead of generating individual cells from column definitions.
+    /// If not set (null), the default column-based cell rendering is used.
+    /// </summary>
+    public DataTemplate? RowTemplate
+    {
+        get => (DataTemplate?)GetValue(RowTemplateProperty);
+        set => SetValue(RowTemplateProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the data template selector that chooses a <see cref="DataTemplate"/> for each row based on the row's data item.
+    /// When set, this selector takes precedence over <see cref="RowTemplate"/>.
+    /// If neither <see cref="RowTemplateSelector"/> nor <see cref="RowTemplate"/> is set, the default column-based cell rendering is used.
+    /// </summary>
+    public DataTemplateSelector? RowTemplateSelector
+    {
+        get => (DataTemplateSelector?)GetValue(RowTemplateSelectorProperty);
+        set => SetValue(RowTemplateSelectorProperty, value);
+    }
+
+    /// <summary>
     /// Gets or sets the selection start cell slot.
     /// </summary>
     internal TableViewCellSlot? SelectionStartCellSlot { get; set; }
@@ -433,6 +465,16 @@ public partial class TableView
     /// Gets or sets a value indicating whether the TableView is in editing mode.
     /// </summary>
     internal bool IsEditing { get; private set; }
+
+    /// <summary>
+    /// Gets the drag rectangle canvas used for visual drag selection.
+    /// </summary>
+    internal Canvas? DragRectangleCanvas { get; private set; }
+
+    /// <summary>
+    /// Gets a value indicating whether a drag selection is in progress.
+    /// </summary>
+    internal bool IsDragging { get; private set; }
 
     /// <summary>
     /// Gets or sets the filter handler for the TableView.
@@ -1352,6 +1394,21 @@ public partial class TableView
             foreach (var row in tableView._rows)
             {
                 row.RowPresenter?.SetRowDetailsTemplate();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Handles changes to the RowTemplate and RowTemplateSelector properties.
+    /// </summary>
+    private static void OnRowTemplateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TableView tableView)
+        {
+            foreach (var row in tableView._rows)
+            {
+                row.RowPresenter?.SetRowTemplate();
+                row.ApplyRowTemplate();
             }
         }
     }

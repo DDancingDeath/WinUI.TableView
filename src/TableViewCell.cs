@@ -461,7 +461,7 @@ public partial class TableViewCell : ContentControl
             }
 
             // When drag rectangle is active, it handles selection via SelectCellsInDragRectangle
-            if (TableView?._isDragging is not true)
+            if (TableView?.IsDragging is not true)
             {
                 var cell = FindCell(e.Position);
 
@@ -509,11 +509,11 @@ public partial class TableViewCell : ContentControl
     /// </summary>
     private Point? TransformPointToCanvas(Point position)
     {
-        if (TableView?._dragRectangleCanvas is null) return null;
+        if (TableView?.DragRectangleCanvas is null) return null;
 
         try
         {
-            var transform = TransformToVisual(TableView._dragRectangleCanvas);
+            var transform = TransformToVisual(TableView.DragRectangleCanvas);
             return transform.TransformPoint(position);
         }
         catch

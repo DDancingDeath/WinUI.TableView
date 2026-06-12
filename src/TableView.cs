@@ -49,10 +49,8 @@ public partial class TableView : ListView
     private bool _ensureColumns = true;
     private readonly List<TableViewRow> _rows = [];
     private readonly CollectionView _collectionView = [];
-    internal Canvas? _dragRectangleCanvas;
     private Border? _dragRectangle;
     private Point? _dragStartPoint;
-    internal bool _isDragging;
     private TableViewCellSlot? _lastDragSelectionSlot;
     private bool _cellSelectionDirty;
     private readonly ObservableCollection<object> _displayItems = [];
@@ -461,7 +459,7 @@ public partial class TableView : ListView
         _headerRow = GetTemplateChild("HeaderRow") as TableViewHeaderRow;
         _scrollViewer = GetTemplateChild("ScrollViewer") as ScrollViewer;
         _headerRowDefinition = GetTemplateChild("HeaderRowDefinition") as RowDefinition;
-        _dragRectangleCanvas = GetTemplateChild("DragRectangleCanvas") as Canvas;
+        DragRectangleCanvas = GetTemplateChild("DragRectangleCanvas") as Canvas;
         _dragRectangle = GetTemplateChild("DragRectangle") as Border;
         if (IsLoaded)
         {
@@ -1949,14 +1947,14 @@ public partial class TableView : ListView
     /// <param name="startPoint">The starting point relative to the drag rectangle canvas.</param>
     internal void StartDragRectangle(Point startPoint)
     {
-        if (!ShowDragRectangle || _dragRectangleCanvas is null || _dragRectangle is null ||
+        if (!ShowDragRectangle || DragRectangleCanvas is null || _dragRectangle is null ||
             SelectionMode is not (ListViewSelectionMode.Multiple or ListViewSelectionMode.Extended))
         {
             return;
         }
 
         _dragStartPoint = startPoint;
-        _isDragging = true;
+        IsDragging = true;
         _lastDragSelectionSlot = null;
 
         Canvas.SetLeft(_dragRectangle, startPoint.X);
@@ -1964,7 +1962,7 @@ public partial class TableView : ListView
         _dragRectangle.Width = 0;
         _dragRectangle.Height = 0;
 
-        _dragRectangleCanvas.Visibility = Visibility.Visible;
+        DragRectangleCanvas.Visibility = Visibility.Visible;
     }
 
     /// <summary>
@@ -1973,7 +1971,7 @@ public partial class TableView : ListView
     /// <param name="currentPoint">The current pointer position relative to the drag rectangle canvas.</param>
     internal void UpdateDragRectangle(Point currentPoint)
     {
-        if (!_isDragging || _dragStartPoint is null || _dragRectangleCanvas is null || _dragRectangle is null)
+        if (!IsDragging || _dragStartPoint is null || DragRectangleCanvas is null || _dragRectangle is null)
         {
             return;
         }
@@ -1983,8 +1981,8 @@ public partial class TableView : ListView
         // Compute edges and clamp to canvas bounds
         var left = Math.Max(0, Math.Min(startPoint.X, currentPoint.X));
         var top = Math.Max(0, Math.Min(startPoint.Y, currentPoint.Y));
-        var right = Math.Min(_dragRectangleCanvas.ActualWidth, Math.Max(startPoint.X, currentPoint.X));
-        var bottom = Math.Min(_dragRectangleCanvas.ActualHeight, Math.Max(startPoint.Y, currentPoint.Y));
+        var right = Math.Min(DragRectangleCanvas.ActualWidth, Math.Max(startPoint.X, currentPoint.X));
+        var bottom = Math.Min(DragRectangleCanvas.ActualHeight, Math.Max(startPoint.Y, currentPoint.Y));
         var width = Math.Max(0, right - left);
         var height = Math.Max(0, bottom - top);
 
@@ -2003,7 +2001,7 @@ public partial class TableView : ListView
     /// </summary>
     private void SelectCellsInDragRectangle()
     {
-        if (!_isDragging || _dragRectangle is null || _dragRectangleCanvas is null ||
+        if (!IsDragging || _dragRectangle is null || DragRectangleCanvas is null ||
             _scrollViewer is null || SelectionStartCellSlot is null)
         {
             return;
@@ -2056,7 +2054,7 @@ public partial class TableView : ListView
         {
             try
             {
-                var rowTop = row.TransformToVisual(_dragRectangleCanvas).TransformPoint(default).Y;
+                var rowTop = row.TransformToVisual(DragRectangleCanvas).TransformPoint(default).Y;
                 var rowBottom = rowTop + row.ActualHeight;
 
                 if (rowBottom > rectTop && rowTop < rectBottom)
@@ -2092,12 +2090,12 @@ public partial class TableView : ListView
     /// </summary>
     internal void EndDragRectangle()
     {
-        if (_dragRectangleCanvas is not null)
+        if (DragRectangleCanvas is not null)
         {
-            _dragRectangleCanvas.Visibility = Visibility.Collapsed;
+            DragRectangleCanvas.Visibility = Visibility.Collapsed;
         }
 
-        _isDragging = false;
+        IsDragging = false;
         _dragStartPoint = null;
         _lastDragSelectionSlot = null;
     }
